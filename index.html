@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SablonKas - Manajemen Keuangan Sablon</title>
+  <meta name="description" content="Aplikasi manajemen keuangan untuk perusahaan percetakan sablon kaos. Kelola penjualan, kas, HPP, piutang, hutang, dan laporan keuangan.">
+  <meta name="keywords" content="kasir sablon, keuangan percetakan, aplikasi sablon kaos, manajemen keuangan">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖨️</text></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ======== APP HEADER ======== -->
+  <header class="app-header" id="appHeader">
+    <div class="app-logo">
+      <span class="logo-icon">🖨️</span>
+      <span class="logo-text">SablonKas</span>
+    </div>
+    <button class="btn-period" id="btnPeriod" onclick="App.openPeriodModal()">
+      <span class="period-icon">📅</span>
+      <span class="period-text" id="periodDisplay">Mei 2025</span>
+      <span class="period-caret">▾</span>
+    </button>
+  </header>
+
+  <!-- ======== MAIN CONTENT ======== -->
+  <main class="app-main">
+    <div id="pageContainer" class="page-container"></div>
+  </main>
+
+  <!-- ======== BOTTOM NAVIGATION ======== -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-item active" data-page="dashboard" onclick="App.navigate('dashboard')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="penjualan" onclick="App.navigate('penjualan')">
+      <span class="nav-icon">🧾</span>
+      <span class="nav-label">Penjualan</span>
+    </button>
+    <button class="nav-item" data-page="kas" onclick="App.navigate('kas')">
+      <span class="nav-icon">💰</span>
+      <span class="nav-label">Kas & Bank</span>
+    </button>
+    <button class="nav-item" data-page="laporan" onclick="App.navigate('laporan')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Laporan</span>
+    </button>
+    <button class="nav-item" data-page="more" onclick="App.openMoreMenu()">
+      <span class="nav-icon">⋯</span>
+      <span class="nav-label">Lainnya</span>
+    </button>
+  </nav>
+
+  <!-- ======== FAB ======== -->
+  <button class="fab" id="fabBtn" onclick="App.openFAB()" title="Tambah Data">
+    <span style="font-size:28px;font-weight:300;line-height:1">+</span>
+  </button>
+
+  <!-- ======== OVERLAY ======== -->
+  <div class="overlay" id="overlay" onclick="App.closeOverlay()"></div>
+
+  <!-- ======== MORE MENU BOTTOM SHEET ======== -->
+  <div class="bottom-sheet" id="moreMenuSheet">
+    <div class="sheet-handle"></div>
+    <h3 class="sheet-title">Menu Lainnya</h3>
+    <div class="more-menu-grid">
+      <button class="more-menu-item" id="menuPembelian" onclick="App.navigate('pembelian'); App.closeOverlay()">
+        <span class="more-icon">📦</span>
+        <span class="more-label">Pembelian</span>
+      </button>
+      <button class="more-menu-item" id="menuProduksi" onclick="App.navigate('produksi'); App.closeOverlay()">
+        <span class="more-icon">⚙️</span>
+        <span class="more-label">Produksi/HPP</span>
+      </button>
+      <button class="more-menu-item" id="menuPiutang" onclick="App.navigate('piutang'); App.closeOverlay()">
+        <span class="more-icon">👥</span>
+        <span class="more-label">Piutang</span>
+      </button>
+      <button class="more-menu-item" id="menuHutang" onclick="App.navigate('hutang'); App.closeOverlay()">
+        <span class="more-icon">🏢</span>
+        <span class="more-label">Hutang</span>
+      </button>
+      <button class="more-menu-item" id="menuBeban" onclick="App.navigate('beban'); App.closeOverlay()">
+        <span class="more-icon">💼</span>
+        <span class="more-label">Beban Ops</span>
+      </button>
+      <button class="more-menu-item" id="menuNeraca" onclick="App.navigate('neraca'); App.closeOverlay()">
+        <span class="more-icon">🏦</span>
+        <span class="more-label">Neraca</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ======== PERIOD SELECTOR MODAL ======== -->
+  <div class="modal" id="periodModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Pilih Periode</h3>
+        <button class="modal-close" id="closePeriodModal" onclick="App.closePeriodModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+          Pilih bulan dan tahun untuk melihat dan menginput data keuangan.
+        </p>
+        <div class="period-selector">
+          <div class="form-group">
+            <label>Bulan</label>
+            <select id="periodMonth" class="form-control">
+              <option value="01">Januari</option>
+              <option value="02">Februari</option>
+              <option value="03">Maret</option>
+              <option value="04">April</option>
+              <option value="05">Mei</option>
+              <option value="06">Juni</option>
+              <option value="07">Juli</option>
+              <option value="08">Agustus</option>
+              <option value="09">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tahun</label>
+            <input type="number" id="periodYear" class="form-control" value="2025" min="2020" max="2099">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btnSetPeriod" onclick="App.setPeriod()">
+          ✅ Terapkan Periode
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== FORM MODAL (Generic) ======== -->
+  <div class="modal" id="formModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="formModalTitle">Form</h3>
+        <button class="modal-close" id="closeFormModal" onclick="App.closeFormModal()">✕</button>
+      </div>
+      <div class="modal-body" id="formModalBody">
+        <!-- Dynamic form content rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== TOAST NOTIFICATIONS ======== -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ======== SCRIPTS ======== -->
+  <script src="js/data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/modules/dashboard.js"></script>
+  <script src="js/modules/penjualan.js"></script>
+  <script src="js/modules/kas.js"></script>
+  <script src="js/modules/pembelian.js"></script>
+  <script src="js/modules/produksi.js"></script>
+  <script src="js/modules/piutang.js"></script>
+  <script src="js/modules/hutang.js"></script>
+  <script src="js/modules/beban.js"></script>
+  <script src="js/modules/laporan.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
