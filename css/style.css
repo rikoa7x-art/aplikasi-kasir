@@ -100,23 +100,28 @@ body {
   gap: 8px;
 }
 .logo-img {
-  height: 32px;
+  height: 28px;
   width: auto;
+  max-width: 80px;
   object-fit: contain;
-  /* Logo hitam → putih di dark mode */
   filter: invert(1) brightness(2);
   transition: opacity var(--transition);
+  flex-shrink: 0;
 }
 .logo-img:hover { opacity: 0.85; }
 
 .logo-text {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   background: var(--gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .btn-period {
@@ -704,7 +709,7 @@ select.form-control option { background: var(--bg-card); }
 .welcome-card {
   background: var(--gradient);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 14px 16px;
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
@@ -713,26 +718,39 @@ select.form-control option { background: var(--bg-card); }
 .welcome-logo-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 .welcome-logo {
-  height: 52px;
+  height: 40px;
   width: auto;
+  max-width: 40px;
   object-fit: contain;
-  /* Invert logo hitam → putih di atas background gradient */
   filter: invert(1) brightness(2);
   flex-shrink: 0;
-  drop-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
-.welcome-title { font-size: 18px; font-weight: 800; color: white; margin-bottom: 2px; }
-.welcome-sub { font-size: 12px; color: rgba(255,255,255,0.8); }
+.welcome-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.welcome-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .welcome-period-label {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255,255,255,0.7);
   background: rgba(0,0,0,0.15);
   border-radius: 99px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   display: inline-block;
   margin-top: 4px;
 }
