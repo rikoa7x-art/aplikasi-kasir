@@ -1,17 +1,17 @@
 /* ================================================
-   SablonKas - Data Store (Supabase + Cache)
+   SablonKas - Data Store (Supabase + localStorage)
    ================================================
-   Strategi: Cache-First
-   - Init: load semua data dari Supabase ke memori
-   - Baca: dari cache (sinkron, no breaking change)
-   - Tulis: update cache langsung + sync Supabase di background
-   - Timeout 8 detik: fallback localStorage jika Supabase lambat
+   Strategi: Write-Through Double Storage
+   - SETIAP tulis → simpan ke localStorage DULU (pasti aman)
+   - SETIAP tulis → juga coba sync ke Supabase (cloud backup)
+   - Saat load → coba Supabase dulu, fallback localStorage
+   - Data TIDAK PERNAH hilang walau Supabase gagal
    ================================================ */
 
 const DB = (() => {
   const COLLECTION_KEYS = ['penjualan', 'kas', 'pembelian', 'produksi', 'piutang', 'hutang', 'beban'];
   const LS_PREFIX = 'sk_';
-  const INIT_TIMEOUT_MS = 8000;
+  const INIT_TIMEOUT_MS = 6000;
 
   const _cache = {
     penjualan: [], kas: [], pembelian: [], produksi: [],
@@ -21,142 +21,148 @@ const DB = (() => {
 
   let _ready = false;
   let _readyCallbacks = [];
-  let _sb = null; // Supabase client
+  let _sb = null;
+  let _useSupabase = false; // apakah Supabase berhasil connect
 
-  // ---- Supabase fire-and-forget write ----
-  function _fw(promiseFn) {
-    if (!_sb) return;
-    try { promiseFn().then(({ error }) => { if (error) console.warn('[Supabase] Write err:', error.message); }); }
-    catch (e) { console.warn('[Supabase] Write err:', e); }
+  // ======== localStorage (primary backup) ========
+
+  function _lsSave(key, value) {
+    try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(value)); }
+    catch (e) { console.warn('[LS] Save err:', e); }
   }
 
-  // ---- Update status loading screen ----
+  function _lsLoad(key, fallback) {
+    try {
+      const raw = localStorage.getItem(LS_PREFIX + key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+
+  function _saveCollectionToLS(key) {
+    _lsSave(key, _cache[key]);
+  }
+
+  function _loadFromLocalStorage() {
+    COLLECTION_KEYS.forEach(key => {
+      _cache[key] = _lsLoad(key, []);
+    });
+    _cache.period         = _lsLoad('period', null);
+    _cache.kas_settings   = _lsLoad('kas_settings', {});
+    _cache.company        = _lsLoad('company', null);
+    _cache.neraca_settings = _lsLoad('neraca_settings', {});
+    console.log('[DB] Loaded from localStorage ✅');
+  }
+
+  // ======== Supabase (cloud sync) ========
+
+  function _sbWrite(promiseFn) {
+    if (!_sb || !_useSupabase) return;
+    try {
+      promiseFn().then(({ error }) => {
+        if (error) console.warn('[Supabase] Write err:', error.message);
+      });
+    } catch (e) { console.warn('[Supabase] Write err:', e); }
+  }
+
+  async function _loadFromSupabase() {
+    const { data: rows, error } = await _sb
+      .from('sablonkas_data')
+      .select('collection, id, data');
+
+    if (error) throw error;
+
+    // Reset cache dan isi dari Supabase
+    COLLECTION_KEYS.forEach(k => { _cache[k] = []; });
+    (rows || []).forEach(row => {
+      if (Array.isArray(_cache[row.collection])) {
+        _cache[row.collection].push(row.data);
+      }
+    });
+
+    const { data: settings, error: setErr } = await _sb
+      .from('sablonkas_settings')
+      .select('key, value');
+    if (setErr) throw setErr;
+
+    (settings || []).forEach(row => { _cache[row.key] = row.value; });
+
+    // Sync hasil Supabase ke localStorage juga
+    COLLECTION_KEYS.forEach(k => _lsSave(k, _cache[k]));
+    if (_cache.period)          _lsSave('period', _cache.period);
+    if (_cache.kas_settings)    _lsSave('kas_settings', _cache.kas_settings);
+    if (_cache.company)         _lsSave('company', _cache.company);
+    if (_cache.neraca_settings) _lsSave('neraca_settings', _cache.neraca_settings);
+
+    console.log('[Supabase] Data loaded ✅');
+  }
+
+  async function _migrateToSupabase() {
+    // Cek apakah Supabase sudah ada data
+    const { data: existing, error } = await _sb.from('sablonkas_data').select('id').limit(1);
+    if (error) throw error; // tabel belum ada → lempar error
+    if (existing && existing.length > 0) return; // sudah ada data, skip
+
+    // Upload data dari localStorage ke Supabase
+    const allRows = [];
+    for (const key of COLLECTION_KEYS) {
+      const records = _lsLoad(key, []);
+      records.filter(r => r.id).forEach(r => {
+        allRows.push({ collection: key, id: String(r.id), data: r });
+      });
+    }
+
+    if (allRows.length > 0) {
+      const { error: insErr } = await _sb.from('sablonkas_data').insert(allRows);
+      if (insErr) throw insErr;
+    }
+
+    // Upload settings
+    const settingsRows = [];
+    ['period', 'kas_settings', 'company', 'neraca_settings'].forEach(key => {
+      const val = _lsLoad(key, null);
+      if (val) settingsRows.push({ key, value: val });
+    });
+    if (settingsRows.length > 0) {
+      await _sb.from('sablonkas_settings').upsert(settingsRows);
+    }
+
+    if (allRows.length > 0 || settingsRows.length > 0) {
+      console.log(`[Migrate] ${allRows.length} records → Supabase ✅`);
+    }
+  }
+
+  // ======== Update loading status ========
   function _setStatus(msg) {
     const el = document.getElementById('loadingStatus');
     if (el) el.textContent = msg;
   }
 
-  // ---- Fallback: localStorage ----
-  function _loadFromLocalStorage() {
-    try {
-      COLLECTION_KEYS.forEach(key => {
-        const raw = localStorage.getItem(LS_PREFIX + key);
-        _cache[key] = raw ? JSON.parse(raw) : [];
-      });
-      ['period', 'kas_settings', 'company', 'neraca_settings'].forEach(key => {
-        const raw = localStorage.getItem(LS_PREFIX + key);
-        if (raw) _cache[key] = JSON.parse(raw);
-      });
-      console.log('[DB] Loaded from localStorage');
-    } catch (e) { console.warn('[DB] localStorage err:', e); }
-  }
-
-  // ---- Load semua data dari Supabase ----
-  async function _loadFromSupabase() {
-    // Load semua data transaksi sekaligus
-    const { data: rows, error: dataErr } = await _sb
-      .from('sablonkas_data')
-      .select('collection, id, data');
-
-    if (dataErr) throw dataErr;
-
-    // Reset cache collections
-    COLLECTION_KEYS.forEach(k => { _cache[k] = []; });
-
-    // Isi cache dari rows
-    (rows || []).forEach(row => {
-      if (_cache[row.collection] !== undefined) {
-        _cache[row.collection].push(row.data);
-      }
-    });
-
-    // Load settings
-    const { data: settings, error: setErr } = await _sb
-      .from('sablonkas_settings')
-      .select('key, value');
-
-    if (setErr) throw setErr;
-
-    (settings || []).forEach(row => {
-      _cache[row.key] = row.value;
-    });
-
-    console.log('[Supabase] Data loaded ✅');
-  }
-
-  // ---- Migrasi localStorage → Supabase (sekali jalan) ----
-  async function _migrate() {
-    if (localStorage.getItem(LS_PREFIX + '_migrated_sb')) return;
-
-    // Cek apakah Supabase sudah ada data
-    const { data: existing } = await _sb.from('sablonkas_data').select('id').limit(1);
-    if (existing && existing.length > 0) {
-      localStorage.setItem(LS_PREFIX + '_migrated_sb', '1');
-      return;
-    }
-
-    let migrated = false;
-
-    // Migrasi koleksi data
-    for (const key of COLLECTION_KEYS) {
-      const raw = localStorage.getItem(LS_PREFIX + key);
-      if (!raw) continue;
-      const records = JSON.parse(raw);
-      if (!records || !records.length) continue;
-
-      const rows = records
-        .filter(r => r.id)
-        .map(r => ({ collection: key, id: String(r.id), data: r }));
-
-      if (rows.length > 0) {
-        const { error } = await _sb.from('sablonkas_data').insert(rows);
-        if (error) console.warn(`[Migrate] Error '${key}':`, error.message);
-        else { console.log(`[Migrate] '${key}': ${rows.length} records → Supabase`); migrated = true; }
-      }
-    }
-
-    // Migrasi settings
-    const settingsKeys = ['period', 'kas_settings', 'company', 'neraca_settings'];
-    const settingsRows = [];
-    settingsKeys.forEach(key => {
-      const raw = localStorage.getItem(LS_PREFIX + key);
-      if (raw) settingsRows.push({ key, value: JSON.parse(raw) });
-    });
-
-    if (settingsRows.length > 0) {
-      const { error } = await _sb.from('sablonkas_settings').upsert(settingsRows);
-      if (error) console.warn('[Migrate] Settings error:', error.message);
-      else migrated = true;
-    }
-
-    if (migrated) {
-      localStorage.setItem(LS_PREFIX + '_migrated_sb', '1');
-      console.log('[Migrate] Migrasi selesai ✅');
-    }
-  }
-
-  // ---- Tandai siap ----
+  // ======== Tandai siap ========
   function _markReady() {
     _ready = true;
     const cbs = _readyCallbacks.splice(0);
     cbs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } });
   }
 
-  // ---- Inisialisasi utama ----
+  // ======== Inisialisasi utama ========
   async function _init() {
+    // Selalu load localStorage dulu → data pasti tersedia
+    _loadFromLocalStorage();
+
     _sb = window._supabaseClient || null;
 
     if (!_sb) {
-      _setStatus('Mode offline (data lokal)');
-      _loadFromLocalStorage();
+      _setStatus('Mode lokal (tanpa cloud sync)');
       _markReady();
       return;
     }
 
+    // Coba connect ke Supabase dengan timeout
     const supabaseWork = async () => {
-      _setStatus('Memuat data dari Supabase...');
-      await _migrate();
+      _setStatus('Menghubungkan ke Supabase...');
+      await _migrateToSupabase();
       await _loadFromSupabase();
+      _useSupabase = true;
     };
 
     const timeout = new Promise((_, reject) =>
@@ -165,24 +171,28 @@ const DB = (() => {
 
     try {
       await Promise.race([supabaseWork(), timeout]);
-      _setStatus('Data siap ✅');
+      _setStatus('Tersinkron ✅');
     } catch (err) {
-      const msg = err.message === 'timeout' ? 'Koneksi lambat, pakai data lokal...' : 'Pakai data lokal...';
-      _setStatus(msg);
-      console.warn('[DB] Supabase fallback:', err.message);
-      _loadFromLocalStorage();
+      if (err.message === 'timeout') {
+        _setStatus('Cloud lambat, pakai data lokal');
+        console.warn('[DB] Supabase timeout, gunakan localStorage');
+      } else {
+        _setStatus('Cloud error, pakai data lokal');
+        console.warn('[DB] Supabase err:', err.message || err);
+      }
+      // Data localStorage sudah dimuat di awal — aman
     }
 
     _markReady();
   }
 
-  // ---- Public: onReady ----
+  // ======== Public: onReady ========
   function onReady(cb) {
     if (_ready) { try { cb(); } catch (e) { console.error(e); } }
     else _readyCallbacks.push(cb);
   }
 
-  // ---- Period ----
+  // ======== Period ========
   function getPeriode() {
     if (_cache.period) return _cache.period;
     const now = new Date();
@@ -191,19 +201,20 @@ const DB = (() => {
   function setPeriode(month, year) {
     const val = { month, year };
     _cache.period = val;
-    _fw(() => _sb.from('sablonkas_settings').upsert({ key: 'period', value: val }));
+    _lsSave('period', val); // ← localStorage dulu
+    _sbWrite(() => _sb.from('sablonkas_settings').upsert({ key: 'period', value: val }));
   }
   function getPeriodeKey() {
     const p = getPeriode(); return `${p.year}-${p.month}`;
   }
 
-  // ---- CRUD ----
+  // ======== CRUD (selalu tulis ke localStorage) ========
   function getAll(key) { return Array.isArray(_cache[key]) ? [..._cache[key]] : []; }
 
   function saveAll(key, data) {
     _cache[key] = [...data];
-    _fw(async () => {
-      // Hapus semua record lama untuk koleksi ini
+    _saveCollectionToLS(key); // ← localStorage dulu
+    _sbWrite(async () => {
       await _sb.from('sablonkas_data').delete().eq('collection', key);
       if (!data.length) return { error: null };
       const rows = data.filter(r => r.id).map(r => ({ collection: key, id: String(r.id), data: r }));
@@ -216,14 +227,18 @@ const DB = (() => {
   function add(key, record) {
     if (!Array.isArray(_cache[key])) _cache[key] = [];
     _cache[key].push(record);
-    _fw(() => _sb.from('sablonkas_data').insert({ collection: key, id: String(record.id), data: record }));
+    _saveCollectionToLS(key); // ← localStorage dulu
+    _sbWrite(() => _sb.from('sablonkas_data').insert({
+      collection: key, id: String(record.id), data: record
+    }));
   }
 
   function update(key, id, updates) {
     _cache[key] = getAll(key).map(r => r.id === id ? { ...r, ...updates } : r);
+    _saveCollectionToLS(key); // ← localStorage dulu
     const updated = _cache[key].find(r => r.id === id);
     if (updated) {
-      _fw(() => _sb.from('sablonkas_data')
+      _sbWrite(() => _sb.from('sablonkas_data')
         .update({ data: updated })
         .eq('collection', key)
         .eq('id', String(id))
@@ -233,24 +248,30 @@ const DB = (() => {
 
   function remove(key, id) {
     _cache[key] = getAll(key).filter(r => r.id !== id);
-    _fw(() => _sb.from('sablonkas_data').delete().eq('collection', key).eq('id', String(id)));
+    _saveCollectionToLS(key); // ← localStorage dulu
+    _sbWrite(() => _sb.from('sablonkas_data').delete()
+      .eq('collection', key).eq('id', String(id))
+    );
   }
 
-  // ---- Settings ----
+  // ======== Settings (selalu tulis ke localStorage) ========
   function getKasSettings(pk) { return (_cache.kas_settings || {})[pk] || { saldoKas: 0, saldoBank: 0 }; }
   function setKasSettings(pk, s) {
     if (!_cache.kas_settings) _cache.kas_settings = {};
     _cache.kas_settings[pk] = s;
-    const snap = { ..._cache.kas_settings };
-    _fw(() => _sb.from('sablonkas_settings').upsert({ key: 'kas_settings', value: snap }));
+    _lsSave('kas_settings', _cache.kas_settings);
+    _sbWrite(() => _sb.from('sablonkas_settings').upsert({ key: 'kas_settings', value: { ..._cache.kas_settings } }));
   }
+
   function getCompanySettings() {
     return _cache.company || { nama: 'WY SPORT', tagline: 'Jersey & Sportswear Custom', alamat: '', telepon: '' };
   }
   function setCompanySettings(s) {
     _cache.company = s;
-    _fw(() => _sb.from('sablonkas_settings').upsert({ key: 'company', value: s }));
+    _lsSave('company', s);
+    _sbWrite(() => _sb.from('sablonkas_settings').upsert({ key: 'company', value: s }));
   }
+
   function getNeracaSettings(pk) {
     return (_cache.neraca_settings || {})[pk] || {
       persediaanBahanBaku: 0, persediaanBarangJadi: 0, mesinPeralatan: 0,
@@ -261,11 +282,11 @@ const DB = (() => {
   function setNeracaSettings(pk, s) {
     if (!_cache.neraca_settings) _cache.neraca_settings = {};
     _cache.neraca_settings[pk] = { ...getNeracaSettings(pk), ...s };
-    const snap = { ..._cache.neraca_settings };
-    _fw(() => _sb.from('sablonkas_settings').upsert({ key: 'neraca_settings', value: snap }));
+    _lsSave('neraca_settings', _cache.neraca_settings);
+    _sbWrite(() => _sb.from('sablonkas_settings').upsert({ key: 'neraca_settings', value: { ..._cache.neraca_settings } }));
   }
 
-  // ---- Aggregations ----
+  // ======== Aggregations ========
   function getTotalPenjualan(pk) { return getByPeriode('penjualan', pk).reduce((s, r) => s + (parseFloat(r.totalHarga) || 0), 0); }
   function getTotalHPP(pk)       { return getByPeriode('produksi', pk).reduce((s, r) => s + (parseFloat(r.totalHPP) || 0), 0); }
   function getTotalBeban(pk)     { return getByPeriode('beban', pk).reduce((s, r) => s + (parseFloat(r.jumlah) || 0), 0); }
