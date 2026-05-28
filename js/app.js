@@ -237,5 +237,19 @@ const App = (() => {
 
 // ---- App Initialization ----
 document.addEventListener('DOMContentLoaded', () => {
-  App.init();
+  const loadingEl = document.getElementById('appLoadingScreen');
+  const statusEl  = document.getElementById('loadingStatus');
+
+  // Tunggu Firestore selesai load data
+  DB.onReady(() => {
+    if (statusEl) statusEl.textContent = 'Data siap ✅';
+
+    // Init aplikasi
+    App.init();
+
+    // Sembunyikan loading screen dengan animasi fade
+    setTimeout(() => {
+      if (loadingEl) loadingEl.classList.add('hidden');
+    }, 300);
+  });
 });
