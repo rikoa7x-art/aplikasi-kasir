@@ -83,7 +83,7 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--header-height);
-  background: rgba(10,10,20,0.95);
+  background: rgba(11,11,26,0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-light);
@@ -92,30 +92,43 @@ body {
   justify-content: space-between;
   padding: 0 16px;
   z-index: 100;
+  overflow: hidden; /* cegah elemen child meluap keluar header */
 }
 
 .app-logo {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   flex-shrink: 1;
   overflow: hidden;
 }
-.logo-img {
-  height: 26px;
-  width: auto;
-  max-width: 60px;
-  object-fit: contain;
+
+/* Logo menggunakan CSS background-image agar dimensi selalu terkontrol */
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px; /* tidak bisa menyusut */
+  background-image: url('../icons/logo-wysport.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   filter: invert(1) brightness(2);
-  transition: opacity var(--transition);
   flex-shrink: 0;
 }
-.logo-img:hover { opacity: 0.85; }
 
-/* Sembunyikan teks nama di header — logo image sudah cukup */
 .logo-text {
-  display: none;
+  font-size: 14px;
+  font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
 }
 
 .btn-period {
