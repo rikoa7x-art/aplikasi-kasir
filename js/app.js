@@ -68,7 +68,9 @@ const App = (() => {
   function openPeriodModal() {
     const p = DB.getPeriode();
     document.getElementById('periodMonth').value = p.month;
-    document.getElementById('periodYear').value = p.year;
+    // Bug #7 fix: gunakan tahun berjalan jika belum ada preference tersimpan
+    const yearEl = document.getElementById('periodYear');
+    yearEl.value = p.year;
     showOverlay();
     document.getElementById('periodModal').classList.add('visible');
   }
@@ -118,6 +120,19 @@ const App = (() => {
   }
 
   function closeFormModal() {
+    // Bug #9 fix: peringatkan user jika ada form yang sudah diisi
+    const form = document.querySelector('#formModal form');
+    if (form) {
+      const inputs = form.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, textarea');
+      let hasDirtyData = false;
+      inputs.forEach(el => {
+        const val = el.value.trim();
+        if (val && val !== '0' && val !== el.defaultValue) hasDirtyData = true;
+      });
+      if (hasDirtyData) {
+        if (!window.confirm('Data yang sudah diisi akan hilang. Yakin ingin menutup?')) return;
+      }
+    }
     document.getElementById('formModal').classList.remove('visible');
     hideOverlay();
   }
@@ -135,6 +150,48 @@ const App = (() => {
     };
     const action = fabActions[currentPage];
     if (action) action();
+  }
+
+  // ---- Company Settings (Bug #10 fix) ----
+  function openCompanySettings() {
+    const c = DB.getCompanySettings();
+    const formHtml = `
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Atur informasi perusahaan yang akan tampil di invoice dan laporan.</p>
+      <div class="form-group">
+        <label>Nama Perusahaan</label>
+        <input class="form-control" id="cs_nama" type="text" placeholder="WY SPORT" value="${c.nama || ''}" required>
+      </div>
+      <div class="form-group">
+        <label>Tagline / Deskripsi</label>
+        <input class="form-control" id="cs_tagline" type="text" placeholder="Jersey & Sportswear Custom" value="${c.tagline || ''}">
+      </div>
+      <div class="form-group">
+        <label>Alamat</label>
+        <input class="form-control" id="cs_alamat" type="text" placeholder="Jl. Contoh No. 1, Kota" value="${c.alamat || ''}">
+      </div>
+      <div class="form-group">
+        <label>No. Telepon / WhatsApp</label>
+        <input class="form-control" id="cs_telp" type="text" placeholder="08123456789" value="${c.telepon || ''}">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="App.closeFormModal()">Batal</button>
+        <button type="button" class="btn btn-primary" style="flex:1" onclick="App.saveCompanySettings()">💾 Simpan</button>
+      </div>
+    `;
+    openFormModal('⚙️ Pengaturan Perusahaan', formHtml);
+  }
+
+  function saveCompanySettings() {
+    const nama = document.getElementById('cs_nama')?.value.trim();
+    if (!nama) { Utils.toast('Nama perusahaan wajib diisi!', 'error'); return; }
+    DB.setCompanySettings({
+      nama,
+      tagline: document.getElementById('cs_tagline')?.value.trim() || '',
+      alamat: document.getElementById('cs_alamat')?.value.trim() || '',
+      telepon: document.getElementById('cs_telp')?.value.trim() || ''
+    });
+    closeFormModal();
+    Utils.toast('Pengaturan perusahaan disimpan ✅', 'success');
   }
 
   // ---- Overlay ----
@@ -163,7 +220,8 @@ const App = (() => {
     openPeriodModal, closePeriodModal, setPeriod,
     openMoreMenu,
     openFormModal, closeFormModal,
-    openFAB, closeOverlay
+    openFAB, closeOverlay,
+    openCompanySettings, saveCompanySettings
   };
 })();
 

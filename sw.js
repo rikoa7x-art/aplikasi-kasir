@@ -2,8 +2,9 @@
    SablonKas - Service Worker (PWA Offline Support)
    ================================================ */
 
-const CACHE_NAME = 'sablonkas-v1';
-const CACHE_VERSION = '1.0.0';
+const CACHE_VERSION = '1.1.0';
+// Bug #8 fix: sertakan versi di nama cache agar update otomatis invalitate cache lama
+const CACHE_NAME = `sablonkas-v${CACHE_VERSION}`;
 
 // Files to cache for offline use
 const ASSETS_TO_CACHE = [

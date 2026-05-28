@@ -13,8 +13,9 @@ const Dashboard = (() => {
     const labaKotor = totalPendapatan - totalHPP;
     const totalBeban = DB.getTotalBeban(periode);
     const labaBersih = labaKotor - totalBeban;
-    const totalPiutang = DB.getTotalPiutang();
-    const totalHutang = DB.getTotalHutang();
+    // Bug #2 fix: filter piutang & hutang per periode aktif, bukan semua periode
+    const totalPiutang = DB.getTotalPiutang(periode);
+    const totalHutang = DB.getTotalHutang(periode);
 
     return `
       <div class="welcome-card">

@@ -16,8 +16,8 @@ const Produksi = (() => {
 
     const rows = data.length === 0
       ? `<tr><td colspan="10" class="table-empty">
-           <div class="table-empty-icon">⚙️</div>
-           <div class="table-empty-text">Belum ada data produksi / HPP</div>
+           <div class="table-empty-icon">👕</div>
+           <div class="table-empty-text">Belum ada data produksi / HPP jersey</div>
          </td></tr>`
       : data.map(r => {
           const margin = parseFloat(r.margin) || 0;
@@ -165,7 +165,8 @@ const Produksi = (() => {
           </div>
           <div class="form-group">
             <label>Margin (%)</label>
-            <input class="form-control calculated-field" id="prMargin" type="text" readonly value="${r.margin ? (r.margin * 100).toFixed(1) + '%' : ''}">
+            <input class="form-control calculated-field" id="prMargin" type="text" readonly value="${r.margin !== undefined ? (r.margin * 100).toFixed(1) + '%' : ''}">
+            <input type="hidden" id="prMarginVal" value="${r.margin || 0}">
           </div>
         </div>
         <div class="form-actions">
@@ -184,7 +185,17 @@ const Produksi = (() => {
       const produkEl = document.getElementById('prProduk');
       const qtyEl = document.getElementById('prQty');
       const hjEl = document.getElementById('prHJ');
-      if (produkEl) produkEl.value = inv.jenisProduk;
+      // Bangun label produk lengkap dengan spesifikasi jersey
+      let labelProduk = inv.jenisProduk || '';
+      const specs = [];
+      if (inv.ukuranSegmen) specs.push(inv.ukuranSegmen);
+      if (inv.lengan) specs.push(inv.lengan);
+      if (inv.customJersey === 'Ya') specs.push('Custom');
+      if (inv.embellishment && inv.embellishment !== 'Tanpa Embellishment') {
+        specs.push(inv.embellishment.split('(')[0].trim());
+      }
+      if (specs.length) labelProduk += ' (' + specs.join(', ') + ')';
+      if (produkEl) produkEl.value = labelProduk;
       if (qtyEl) qtyEl.value = inv.qty;
       if (hjEl) hjEl.value = inv.totalHarga;
       calcHPP();
@@ -210,9 +221,14 @@ const Produksi = (() => {
     const hpp = parseFloat(document.getElementById('prHPP')?.value) || 0;
     const hj = parseFloat(document.getElementById('prHJ')?.value) || 0;
     const marginEl = document.getElementById('prMargin');
-    if (marginEl && hj > 0) {
+    const marginValEl = document.getElementById('prMarginVal');
+    if (hj > 0) {
       const margin = (hj - hpp) / hj;
-      marginEl.value = (margin * 100).toFixed(1) + '%';
+      if (marginEl) marginEl.value = (margin * 100).toFixed(1) + '%';
+      if (marginValEl) marginValEl.value = margin; // simpan desimal murni
+    } else {
+      if (marginEl) marginEl.value = '';
+      if (marginValEl) marginValEl.value = 0;
     }
   }
 
@@ -225,6 +241,7 @@ const Produksi = (() => {
     const qty = parseFloat(document.getElementById('prQty').value) || 1;
     const hj = parseFloat(document.getElementById('prHJ').value) || 0;
     const totalHPP = bahan + tinta + tk + oh;
+    // Bug #4 fix: baca margin dari hidden field (desimal murni) bukan dari display field
     const margin = hj > 0 ? (hj - totalHPP) / hj : 0;
 
     const record = {

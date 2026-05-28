@@ -191,6 +191,15 @@ const Kas = (() => {
 
   function saveForm(e, id) {
     e.preventDefault();
+    const masuk = parseFloat(document.getElementById('ksMasuk').value) || 0;
+    const keluar = parseFloat(document.getElementById('ksKeluar').value) || 0;
+
+    // Bug #5 fix: transaksi kas tidak boleh kosong (masuk & keluar keduanya 0)
+    if (masuk === 0 && keluar === 0) {
+      Utils.toast('Masukkan nominal uang masuk atau keluar!', 'error');
+      return;
+    }
+
     const record = {
       id: id || DB.generateId(),
       periode: DB.getPeriodeKey(),
@@ -198,8 +207,8 @@ const Kas = (() => {
       keterangan: document.getElementById('ksKet').value.trim(),
       kategori: document.getElementById('ksKat').value,
       referensi: document.getElementById('ksRef').value.trim(),
-      masuk: parseFloat(document.getElementById('ksMasuk').value) || 0,
-      keluar: parseFloat(document.getElementById('ksKeluar').value) || 0
+      masuk,
+      keluar
     };
     if (id) DB.update('kas', id, record);
     else DB.add('kas', record);

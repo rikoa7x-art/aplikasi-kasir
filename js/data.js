@@ -9,6 +9,7 @@ const DB = (() => {
   function getPeriode() {
     const raw = localStorage.getItem(PREFIX + 'period');
     if (raw) return JSON.parse(raw);
+    // Bug #7 fix: default ke bulan & tahun berjalan (bukan hardcode)
     const now = new Date();
     return {
       month: String(now.getMonth() + 1).padStart(2, '0'),
@@ -69,6 +70,21 @@ const DB = (() => {
     localStorage.setItem(PREFIX + 'kas_settings', JSON.stringify(all));
   }
 
+  // ---- Company Settings (Bug #10 fix) ----
+  function getCompanySettings() {
+    const raw = localStorage.getItem(PREFIX + 'company');
+    return raw ? JSON.parse(raw) : {
+      nama: 'WY SPORT',
+      tagline: 'Jersey & Sportswear Custom',
+      alamat: '',
+      telepon: ''
+    };
+  }
+
+  function setCompanySettings(settings) {
+    localStorage.setItem(PREFIX + 'company', JSON.stringify(settings));
+  }
+
   // ---- Neraca Settings ----
   function getNeracaSettings(periodeKey) {
     const raw = localStorage.getItem(PREFIX + 'neraca_settings');
@@ -109,14 +125,22 @@ const DB = (() => {
       .reduce((s, r) => s + (parseFloat(r.jumlah) || 0), 0);
   }
 
-  function getTotalPiutang() {
-    return getAll('piutang')
+  function getTotalPiutang(periodeKey) {
+    // Jika periodeKey diberikan, filter per periode; jika tidak, ambil semua aktif
+    const data = periodeKey
+      ? getAll('piutang').filter(r => r.periode === periodeKey)
+      : getAll('piutang');
+    return data
       .filter(r => r.status !== 'LUNAS')
       .reduce((s, r) => s + (parseFloat(r.sisaPiutang) || 0), 0);
   }
 
-  function getTotalHutang() {
-    return getAll('hutang')
+  function getTotalHutang(periodeKey) {
+    // Jika periodeKey diberikan, filter per periode; jika tidak, ambil semua aktif
+    const data = periodeKey
+      ? getAll('hutang').filter(r => r.periode === periodeKey)
+      : getAll('hutang');
+    return data
       .filter(r => r.status !== 'LUNAS')
       .reduce((s, r) => s + (parseFloat(r.sisaHutang) || 0), 0);
   }
@@ -129,8 +153,26 @@ const DB = (() => {
     return (parseFloat(settings.saldoKas) || 0) + (parseFloat(settings.saldoBank) || 0) + totalMasuk - totalKeluar;
   }
 
+  // Mengembalikan rincian saldo kas & bank secara terpisah untuk Neraca
+  function getKasSaldoDetail(periodeKey) {
+    const settings = getKasSettings(periodeKey);
+    const txns = getByPeriode('kas', periodeKey);
+    const totalMasuk = txns.reduce((s, r) => s + (parseFloat(r.masuk) || 0), 0);
+    const totalKeluar = txns.reduce((s, r) => s + (parseFloat(r.keluar) || 0), 0);
+    const netFlow = totalMasuk - totalKeluar;
+    // Distribusikan net flow proporsional, atau simpan sebagai kas tunai
+    const saldoKasAwal = parseFloat(settings.saldoKas) || 0;
+    const saldoBankAwal = parseFloat(settings.saldoBank) || 0;
+    // Net flow dari transaksi kas dianggap masuk/keluar kas tunai
+    return {
+      kasTunai: saldoKasAwal + netFlow,
+      kasBank: saldoBankAwal
+    };
+  }
+
+  // Bug #6 fix: ganti substr() (deprecated) dengan slice()
   function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
   return {
@@ -138,8 +180,9 @@ const DB = (() => {
     getAll, saveAll, getByPeriode, add, update, remove,
     getKasSettings, setKasSettings,
     getNeracaSettings, setNeracaSettings,
+    getCompanySettings, setCompanySettings,
     getTotalPenjualan, getTotalHPP, getTotalBeban,
-    getTotalPiutang, getTotalHutang, getKasSaldo,
+    getTotalPiutang, getTotalHutang, getKasSaldo, getKasSaldoDetail,
     generateId
   };
 })();

@@ -129,15 +129,12 @@ const Laporan = (() => {
 
   function renderNeraca(periode) {
     const periodeLabel = Utils.getPeriodeLabel(periode);
-    const settings = DB.getKasSettings(periode);
     const neracaSet = DB.getNeracaSettings(periode);
 
-    // Auto-calculated values
-    const kasData = DB.getByPeriode('kas', periode);
-    const totalMasuk = kasData.reduce((s, r) => s + (parseFloat(r.masuk) || 0), 0);
-    const totalKeluar = kasData.reduce((s, r) => s + (parseFloat(r.keluar) || 0), 0);
-    const kasTunai = (parseFloat(settings.saldoKas) || 0) + totalMasuk - totalKeluar;
-    const kasBank = parseFloat(settings.saldoBank) || 0;
+    // Bug #1 fix: gunakan getKasSaldoDetail() untuk mendapatkan kas tunai & bank secara terpisah
+    const kasSaldoDetail = DB.getKasSaldoDetail(periode);
+    const kasTunai = kasSaldoDetail.kasTunai;
+    const kasBank = kasSaldoDetail.kasBank;
 
     const piutangAktif = DB.getAll('piutang').filter(r => r.periode === periode && r.status !== 'LUNAS')
       .reduce((s, r) => s + (parseFloat(r.sisaPiutang) || 0), 0);
@@ -375,7 +372,7 @@ const Laporan = (() => {
     ];
 
     Utils.exportExcel([
-      { sheetName: 'Laba Rugi', headers: ['Keterangan', 'Jumlah (Rp)'], rows: lrRows.slice(1) },
+      { sheetName: 'Laba Rugi', headers: ['Keterangan', 'Jumlah (Rp)'], rows: lrRows },
     ], `Laporan_${periode}`);
   }
 
