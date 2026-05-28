@@ -21,13 +21,8 @@ const Dashboard = (() => {
 
     return `
       <div class="welcome-card">
-        <div class="welcome-logo-row">
-          <img src="icons/logo-wysport.png" class="welcome-logo" alt="${company.nama}">
-          <div>
-            <div class="welcome-title">${company.nama}</div>
-            <div class="welcome-sub">${company.tagline || 'Manajemen Keuangan Usaha'}</div>
-          </div>
-        </div>
+        <div class="welcome-title">${company.nama}</div>
+        <div class="welcome-sub">${company.tagline || 'Manajemen Keuangan Usaha'}</div>
         <div class="welcome-period-label">Periode: ${periodeLabel}</div>
       </div>
 
