@@ -2,8 +2,7 @@
    SablonKas - Service Worker (PWA Offline Support)
    ================================================ */
 
-const CACHE_VERSION = '1.2.0';
-// Update versi cache agar Service Worker fetch ulang semua file
+const CACHE_VERSION = '1.3.0';
 const CACHE_NAME = `sablonkas-v${CACHE_VERSION}`;
 
 // Files to cache for offline use
@@ -12,7 +11,7 @@ const ASSETS_TO_CACHE = [
   './index.html',
   './manifest.json',
   './css/style.css',
-  './js/firebase-config.js',
+  './js/supabase-config.js',
   './js/data.js',
   './js/utils.js',
   './js/app.js',
