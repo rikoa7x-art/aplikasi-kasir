@@ -2,113 +2,133 @@
    SablonKas - Service Worker (PWA Offline Support)
    ================================================ */
 
-const CACHE_VERSION = '1.3.0';
+const CACHE_VERSION = '1.4.0';
 const CACHE_NAME = `sablonkas-v${CACHE_VERSION}`;
 
-// Files to cache for offline use
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './css/style.css',
-  './js/supabase-config.js',
-  './js/data.js',
-  './js/utils.js',
-  './js/app.js',
-  './js/modules/dashboard.js',
-  './js/modules/penjualan.js',
-  './js/modules/kas.js',
-  './js/modules/pembelian.js',
-  './js/modules/produksi.js',
-  './js/modules/piutang.js',
-  './js/modules/hutang.js',
-  './js/modules/beban.js',
-  './js/modules/laporan.js',
+// File JS & CSS yang pakai network-first (selalu ambil versi terbaru)
+const NETWORK_FIRST = [
+  '/aplikasi-kasir/js/',
+  '/aplikasi-kasir/css/',
+  '/aplikasi-kasir/index.html',
+  '/aplikasi-kasir/',
+];
+
+// File statis yang boleh di-cache lama (gambar, icon)
+const STATIC_CACHE = [
   './icons/icon-192x192.png',
   './icons/icon-512x512.png',
   './icons/apple-touch-icon.png',
+  './manifest.json',
 ];
 
-// External resources to cache (with network fallback)
+// External CDN (cache dengan network fallback)
 const EXTERNAL_CACHE = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
   'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js',
 ];
 
-// ---- Install Event: Cache all assets ----
+// ---- Install: hanya cache asset statis & external ----
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing SablonKas Service Worker v' + CACHE_VERSION);
+  console.log('[SW] Installing v' + CACHE_VERSION);
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      // Cache local assets
-      await cache.addAll(ASSETS_TO_CACHE);
-      console.log('[SW] Local assets cached');
+      // Cache icon & manifest
+      try { await cache.addAll(STATIC_CACHE); } catch (e) { console.warn('[SW] Static cache err:', e); }
 
-      // Cache external resources (best effort)
+      // Cache external CDN (best effort)
       for (const url of EXTERNAL_CACHE) {
         try {
-          const response = await fetch(url);
-          if (response.ok) await cache.put(url, response);
-        } catch (e) {
-          console.warn('[SW] Could not cache external:', url);
-        }
+          const res = await fetch(url);
+          if (res.ok) await cache.put(url, res);
+        } catch (e) { console.warn('[SW] Cannot cache external:', url); }
       }
+      console.log('[SW] Installed ✅');
     })
   );
   self.skipWaiting();
 });
 
-// ---- Activate Event: Clean old caches ----
+// ---- Activate: hapus cache lama ----
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating SablonKas Service Worker');
+  console.log('[SW] Activating v' + CACHE_VERSION);
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    caches.keys().then((keys) =>
+      Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
-          .map((key) => {
-            console.log('[SW] Deleting old cache:', key);
-            return caches.delete(key);
-          })
-      );
-    })
+          .map((key) => { console.log('[SW] Deleting old cache:', key); return caches.delete(key); })
+      )
+    )
   );
   self.clients.claim();
 });
 
-// ---- Fetch Event: Cache-first strategy ----
+// ---- Fetch: strategi berbeda per tipe request ----
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  const url = new URL(event.request.url);
+  const url = event.request.url;
 
-  // For navigation requests (HTML pages), use network-first
-  if (event.request.mode === 'navigate') {
+  // ---- External CDN (Supabase, SheetJS, Google Fonts) → cache-first ----
+  if (
+    url.includes('supabase.co') ||
+    url.includes('jsdelivr.net') ||
+    url.includes('sheetjs.com') ||
+    url.includes('fonts.googleapis.com') ||
+    url.includes('fonts.gstatic.com')
+  ) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match('./index.html'))
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+          }
+          return res;
+        });
+      })
     );
     return;
   }
 
-  // For everything else, use cache-first
+  // ---- File JS, CSS, HTML → network-first (selalu versi terbaru) ----
+  const isAppFile = NETWORK_FIRST.some((path) => url.includes(path)) ||
+    url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.html') ||
+    event.request.mode === 'navigate';
+
+  if (isAppFile) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          // Simpan versi terbaru ke cache
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+          }
+          return res;
+        })
+        .catch(() => {
+          // Offline → gunakan cache lama
+          return caches.match(event.request).then((cached) =>
+            cached || caches.match('./index.html')
+          );
+        })
+    );
+    return;
+  }
+
+  // ---- Asset statis lainnya (icon, gambar) → cache-first ----
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200) return response;
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
+      return fetch(event.request).then((res) => {
+        if (res && res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+        }
+        return res;
       }).catch(() => {
-        // Offline fallback for images
         if (event.request.destination === 'image') {
           return new Response(
             '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="#1a1a2e" width="200" height="200"/><text fill="#6c63ff" x="100" y="110" text-anchor="middle" font-size="40">📱</text></svg>',
@@ -120,14 +140,12 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ---- Background Sync (for future use) ----
+// ---- Background Sync ----
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-data') {
-    console.log('[SW] Background sync triggered');
-  }
+  if (event.tag === 'sync-data') console.log('[SW] Background sync triggered');
 });
 
-// ---- Push Notifications (for future use) ----
+// ---- Push Notifications ----
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   self.registration.showNotification(data.title || 'SablonKas', {
