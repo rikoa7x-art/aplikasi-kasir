@@ -160,10 +160,38 @@ const App = (() => {
     if (action) action();
   }
 
-  // ---- Company Settings (Bug #10 fix) ----
+  // ---- Company Settings ----
   function openCompanySettings() {
     const c = DB.getCompanySettings();
+    const sync = DB.getSyncStatus();
+    const syncColors = { ok: '#10b981', error: '#ef4444', no_table: '#f59e0b', offline: '#999', syncing: '#f59e0b' };
+    const syncLabels = { ok: '☁️ Terhubung ke Supabase', error: '❌ Error: ' + sync.error, no_table: '⚙️ Tabel belum dibuat', offline: '📴 Mode lokal (tanpa cloud)', syncing: '🔄 Sedang sinkron...' };
+    const syncColor = syncColors[sync.status] || '#999';
+    const syncLabel = syncLabels[sync.status] || 'Unknown';
+    const sqlInfo = sync.status === 'no_table' ? `
+      <div style="background:#1a1a2e;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin-bottom:16px">
+        <p style="font-size:12px;color:#f59e0b;margin:0 0 8px;font-weight:600">⚙️ Langkah: Buat tabel di Supabase</p>
+        <p style="font-size:11px;color:#aaa;margin:0 0 8px">Buka <strong>supabase.com</strong> → project Anda → <strong>SQL Editor</strong> → paste SQL ini → klik Run:</p>
+        <textarea readonly style="width:100%;font-size:10px;background:#0d0d1a;color:#7dd3fc;border:none;border-radius:4px;padding:8px;font-family:monospace;resize:none;box-sizing:border-box" rows="8">CREATE TABLE IF NOT EXISTS sablonkas_data (
+  collection TEXT NOT NULL,
+  id TEXT NOT NULL,
+  data JSONB NOT NULL,
+  PRIMARY KEY (collection, id)
+);
+CREATE TABLE IF NOT EXISTS sablonkas_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
+ALTER TABLE sablonkas_data DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sablonkas_settings DISABLE ROW LEVEL SECURITY;</textarea>
+        <button type="button" class="btn btn-primary btn-full" style="margin-top:8px;font-size:12px" onclick="window.location.reload()">🔄 Refresh setelah menjalankan SQL</button>
+      </div>` : '';
     const formHtml = `
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 12px;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${syncColor};display:inline-block;flex-shrink:0"></span>
+        <span style="font-size:12px;color:${syncColor}">${syncLabel}</span>
+      </div>
+      ${sqlInfo}
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Atur informasi perusahaan yang akan tampil di invoice dan laporan.</p>
       <div class="form-group">
         <label>Nama Perusahaan</label>
@@ -186,7 +214,7 @@ const App = (() => {
         <button type="button" class="btn btn-primary" style="flex:1" onclick="App.saveCompanySettings()">💾 Simpan</button>
       </div>
     `;
-    openFormModal('⚙️ Pengaturan Perusahaan', formHtml);
+    openFormModal('⚙️ Pengaturan', formHtml);
   }
 
   function saveCompanySettings() {
