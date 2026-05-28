@@ -24,7 +24,15 @@ const App = (() => {
 
   function init() {
     updatePeriodDisplay();
+    updateHeaderCompany();
     navigate('dashboard');
+  }
+
+  // Update nama perusahaan di header dari company settings
+  function updateHeaderCompany() {
+    const c = DB.getCompanySettings();
+    const nameEl = document.getElementById('appLogoText');
+    if (nameEl) nameEl.textContent = c.nama || 'WY SPORT';
   }
 
   function navigate(page) {
@@ -191,6 +199,8 @@ const App = (() => {
       telepon: document.getElementById('cs_telp')?.value.trim() || ''
     });
     closeFormModal();
+    updateHeaderCompany(); // refresh nama di header
+    renderCurrentPage();   // refresh page aktif (misal dashboard)
     Utils.toast('Pengaturan perusahaan disimpan ✅', 'success');
   }
 

@@ -145,11 +145,12 @@ const Utils = (() => {
 
   /* Header */
   .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #111; }
-  .inv-logo-area { display: flex; align-items: center; gap: 12px; }
-  .inv-logo { width: 72px; height: 72px; object-fit: contain; }
+  .inv-logo-area { display: flex; align-items: center; gap: 14px; }
+  .inv-logo { width: 90px; height: 90px; object-fit: contain; }
   .inv-company { }
-  .inv-company-name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #111; }
-  .inv-company-tagline { font-size: 11px; color: #666; margin-top: 2px; }
+  .inv-company-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #111; }
+  .inv-company-tagline { font-size: 11px; color: #666; margin-top: 3px; }
+  .inv-company-contact { font-size: 10px; color: #888; margin-top: 2px; line-height: 1.5; }
   .inv-meta { text-align: right; }
   .inv-number { font-size: 22px; font-weight: 800; color: #111; }
   .inv-date { font-size: 11px; color: #666; margin-top: 4px; }
@@ -218,6 +219,8 @@ const Utils = (() => {
       <div class="inv-company">
         <div class="inv-company-name">${companyName}</div>
         <div class="inv-company-tagline">${companyTagline}</div>
+        ${company.alamat ? `<div class="inv-company-contact">📍 ${company.alamat}</div>` : ''}
+        ${company.telepon ? `<div class="inv-company-contact">📱 ${company.telepon}</div>` : ''}
       </div>
     </div>
     <div class="inv-meta">

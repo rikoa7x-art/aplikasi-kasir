@@ -17,10 +17,18 @@ const Dashboard = (() => {
     const totalPiutang = DB.getTotalPiutang(periode);
     const totalHutang = DB.getTotalHutang(periode);
 
+    const company = DB.getCompanySettings();
+
     return `
       <div class="welcome-card">
-        <div class="welcome-title">🖨️ Percetakan Sablon</div>
-        <div class="welcome-sub">Periode: ${periodeLabel}</div>
+        <div class="welcome-logo-row">
+          <img src="icons/logo-wysport.png" class="welcome-logo" alt="${company.nama}">
+          <div>
+            <div class="welcome-title">${company.nama}</div>
+            <div class="welcome-sub">${company.tagline || 'Manajemen Keuangan Usaha'}</div>
+          </div>
+        </div>
+        <div class="welcome-period-label">Periode: ${periodeLabel}</div>
       </div>
 
       <p class="section-title">Ringkasan Keuangan</p>
