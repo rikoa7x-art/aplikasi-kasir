@@ -3,16 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a14">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SablonKas - Manajemen Keuangan Sablon</title>
   <meta name="description" content="Aplikasi manajemen keuangan untuk perusahaan percetakan sablon kaos. Kelola penjualan, kas, HPP, piutang, hutang, dan laporan keuangan.">
   <meta name="keywords" content="kasir sablon, keuangan percetakan, aplikasi sablon kaos, manajemen keuangan">
+  <meta name="author" content="SablonKas">
 
-  <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖨️</text></svg>">
+  <!-- ======== PWA / Android ======== -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="SablonKas">
+
+  <!-- ======== iOS / Apple ======== -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SablonKas">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- ======== Favicon ======== -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <link rel="shortcut icon" href="icons/favicon-32x32.png">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -166,6 +177,17 @@
   <!-- ======== TOAST NOTIFICATIONS ======== -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- ======== INSTALL BANNER (PWA) ======== -->
+  <div class="install-banner" id="installBanner" style="display:none">
+    <div class="install-banner-icon">📱</div>
+    <div class="install-banner-text">
+      <div class="install-banner-title">Install SablonKas</div>
+      <div class="install-banner-sub">Tambahkan ke layar utama Android</div>
+    </div>
+    <button class="install-banner-btn" onclick="installPWA()">Install</button>
+    <button class="install-banner-close" onclick="dismissInstall()">✕</button>
+  </div>
+
   <!-- ======== SCRIPTS ======== -->
   <script src="js/data.js"></script>
   <script src="js/utils.js"></script>
@@ -179,6 +201,63 @@
   <script src="js/modules/beban.js"></script>
   <script src="js/modules/laporan.js"></script>
   <script src="js/app.js"></script>
+
+  <!-- ======== Service Worker Registration ======== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => {
+            console.log('[SablonKas] Service Worker registered:', reg.scope);
+
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // Show update notification
+                  if (window.Utils) {
+                    Utils.toast('Update tersedia! Refresh untuk memperbarui.', 'info');
+                  }
+                }
+              });
+            });
+          })
+          .catch(err => console.warn('[SablonKas] SW registration failed:', err));
+      });
+    }
+
+    // Handle PWA install prompt (Add to Home Screen)
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+
+      // Show install button after 3 seconds if not installed
+      setTimeout(() => {
+        const installBanner = document.getElementById('installBanner');
+        if (installBanner) installBanner.style.display = 'flex';
+      }, 3000);
+    });
+
+    window.installPWA = function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((result) => {
+          if (result.outcome === 'accepted') {
+            if (window.Utils) Utils.toast('Aplikasi berhasil diinstall! 🎉', 'success');
+            document.getElementById('installBanner').style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      }
+    };
+
+    window.dismissInstall = function() {
+      document.getElementById('installBanner').style.display = 'none';
+      deferredPrompt = null;
+    };
+  </script>
 
 </body>
 </html>
