@@ -97,12 +97,15 @@ body {
 .app-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 .logo-img {
-  height: 28px;
+  height: 26px;
   width: auto;
-  max-width: 80px;
+  max-width: 60px;
   object-fit: contain;
   filter: invert(1) brightness(2);
   transition: opacity var(--transition);
@@ -110,18 +113,9 @@ body {
 }
 .logo-img:hover { opacity: 0.85; }
 
+/* Sembunyikan teks nama di header — logo image sudah cukup */
 .logo-text {
-  font-size: 14px;
-  font-weight: 800;
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
+  display: none;
 }
 
 .btn-period {
