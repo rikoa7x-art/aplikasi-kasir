@@ -1,339 +1,234 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SablonKas - Manajemen Keuangan Sablon</title>
-  <meta name="description" content="Aplikasi manajemen keuangan untuk perusahaan percetakan sablon kaos. Kelola penjualan, kas, HPP, piutang, hutang, dan laporan keuangan.">
-  <meta name="keywords" content="kasir sablon, keuangan percetakan, aplikasi sablon kaos, manajemen keuangan">
-  <meta name="author" content="SablonKas">
-
-  <!-- ======== PWA / Android ======== -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#6c63ff">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="SablonKas">
-
-  <!-- ======== iOS / Apple ======== -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="SablonKas">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-
-  <!-- ======== Favicon ======== -->
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-  <link rel="shortcut icon" href="icons/favicon-32x32.png">
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Supabase SDK v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-  <!-- SheetJS for Excel Export -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-
-  <style>
-    /* Loading Screen */
-    #appLoadingScreen {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 24px;
-      transition: opacity 0.4s ease, visibility 0.4s ease;
-    }
-    #appLoadingScreen.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-    .loading-logo {
-      font-size: 48px;
-      animation: loadingPulse 1.5s ease-in-out infinite;
-    }
-    .loading-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.5px;
-    }
-    .loading-subtitle {
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      color: rgba(255,255,255,0.5);
-      margin-top: -16px;
-    }
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255,255,255,0.15);
-      border-top-color: #6c63ff;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    .loading-status {
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      color: rgba(255,255,255,0.4);
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes loadingPulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.1); opacity: 0.8; }
-    }
-  </style>
-
-  <!-- App Styles -->
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — PWO WYSPORT by Kakami</title>
+  <meta name="description" content="Dashboard manajemen Production Work Order WYSPORT by Kakami. Kelola semua order produksi dalam satu tempat." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a56db" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-  <!-- ======== LOADING SCREEN ======== -->
-  <div id="appLoadingScreen">
-    <div class="loading-logo">🧾</div>
-    <div class="loading-title">SablonKas</div>
-    <div class="loading-subtitle">Manajemen Keuangan Sablon</div>
-    <div class="loading-spinner"></div>
-    <div class="loading-status" id="loadingStatus">Menghubungkan ke Firebase...</div>
-  </div>
+<div class="app-shell">
 
-  <!-- ======== APP HEADER ======== -->
-  <header class="app-header" id="appHeader">
-    <div class="app-logo">
-      <div class="logo-icon" id="appLogoImg"></div>
-      <span class="logo-text" id="appLogoText">WY SPORT</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <span id="syncStatusBadge" style="font-size:10px;padding:3px 7px;border-radius:20px;background:rgba(255,255,255,0.1);color:#999;cursor:default;transition:all 0.3s" title="Status sinkronisasi">📴 Lokal</span>
-      <button class="btn-period" id="btnPeriod" onclick="App.openPeriodModal()">
-        <span class="period-icon">📅</span>
-        <span class="period-text" id="periodDisplay">Mei 2025</span>
-        <span class="period-caret">▾</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- ======== MAIN CONTENT ======== -->
-  <main class="app-main">
-    <div id="pageContainer" class="page-container"></div>
-  </main>
-
-  <!-- ======== BOTTOM NAVIGATION ======== -->
-  <nav class="bottom-nav" id="bottomNav">
-    <button class="nav-item active" data-page="dashboard" onclick="App.navigate('dashboard')">
-      <span class="nav-icon">🏠</span>
-      <span class="nav-label">Dashboard</span>
-    </button>
-    <button class="nav-item" data-page="penjualan" onclick="App.navigate('penjualan')">
-      <span class="nav-icon">🧾</span>
-      <span class="nav-label">Penjualan</span>
-    </button>
-    <button class="nav-item" data-page="kas" onclick="App.navigate('kas')">
-      <span class="nav-icon">💰</span>
-      <span class="nav-label">Kas & Bank</span>
-    </button>
-    <button class="nav-item" data-page="laporan" onclick="App.navigate('laporan')">
-      <span class="nav-icon">📊</span>
-      <span class="nav-label">Laporan</span>
-    </button>
-    <button class="nav-item" data-page="more" onclick="App.openMoreMenu()">
-      <span class="nav-icon">⋯</span>
-      <span class="nav-label">Lainnya</span>
-    </button>
-  </nav>
-
-  <!-- ======== FAB ======== -->
-  <button class="fab" id="fabBtn" onclick="App.openFAB()" title="Tambah Data">
-    <span style="font-size:28px;font-weight:300;line-height:1">+</span>
-  </button>
-
-  <!-- ======== OVERLAY ======== -->
-  <div class="overlay" id="overlay" onclick="App.closeOverlay()"></div>
-
-  <!-- ======== MORE MENU BOTTOM SHEET ======== -->
-  <div class="bottom-sheet" id="moreMenuSheet">
-    <div class="sheet-handle"></div>
-    <h3 class="sheet-title">Menu Lainnya</h3>
-    <div class="more-menu-grid">
-      <button class="more-menu-item" id="menuPembelian" onclick="App.navigate('pembelian'); App.closeOverlay()">
-        <span class="more-icon">📦</span>
-        <span class="more-label">Pembelian</span>
-      </button>
-      <button class="more-menu-item" id="menuProduksi" onclick="App.navigate('produksi'); App.closeOverlay()">
-        <span class="more-icon">⚙️</span>
-        <span class="more-label">Produksi/HPP</span>
-      </button>
-      <button class="more-menu-item" id="menuPiutang" onclick="App.navigate('piutang'); App.closeOverlay()">
-        <span class="more-icon">👥</span>
-        <span class="more-label">Piutang</span>
-      </button>
-      <button class="more-menu-item" id="menuHutang" onclick="App.navigate('hutang'); App.closeOverlay()">
-        <span class="more-icon">🏢</span>
-        <span class="more-label">Hutang</span>
-      </button>
-      <button class="more-menu-item" id="menuBeban" onclick="App.navigate('beban'); App.closeOverlay()">
-        <span class="more-icon">💼</span>
-        <span class="more-label">Beban Ops</span>
-      </button>
-      <button class="more-menu-item" id="menuNeraca" onclick="App.navigate('neraca'); App.closeOverlay()">
-        <span class="more-icon">🏦</span>
-        <span class="more-label">Neraca</span>
-      </button>
-      <button class="more-menu-item" id="menuSettings" onclick="App.openCompanySettings(); App.closeOverlay()">
-        <span class="more-icon">⚙️</span>
-        <span class="more-label">Pengaturan</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- ======== PERIOD SELECTOR MODAL ======== -->
-  <div class="modal" id="periodModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Pilih Periode</h3>
-        <button class="modal-close" id="closePeriodModal" onclick="App.closePeriodModal()">✕</button>
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="index.html">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">PWO App</div>
+        <div class="brand-sub">WYSPORT by Kakami</div>
       </div>
-      <div class="modal-body">
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-          Pilih bulan dan tahun untuk melihat dan menginput data keuangan.
-        </p>
-        <div class="period-selector">
-          <div class="form-group">
-            <label>Bulan</label>
-            <select id="periodMonth" class="form-control">
-              <option value="01">Januari</option>
-              <option value="02">Februari</option>
-              <option value="03">Maret</option>
-              <option value="04">April</option>
-              <option value="05">Mei</option>
-              <option value="06">Juni</option>
-              <option value="07">Juli</option>
-              <option value="08">Agustus</option>
-              <option value="09">September</option>
-              <option value="10">Oktober</option>
-              <option value="11">November</option>
-              <option value="12">Desember</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Tahun</label>
-            <input type="number" id="periodYear" class="form-control" value="2025" min="2020" max="2099" data-current-year="true">
-          </div>
+    </a>
+
+    <div class="sidebar-section-label">Menu</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn active" href="index.html">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a class="nav-btn" href="form.html">
+        <span class="nav-icon">➕</span> Buat PWO Baru
+      </a>
+      <button class="nav-btn" onclick="filterByStatus('proses')">
+        <span class="nav-icon">⚙️</span> Sedang Proses
+      </button>
+      <button class="nav-btn" onclick="filterByStatus('qc')">
+        <span class="nav-icon">🔍</span> QC
+      </button>
+      <button class="nav-btn" onclick="filterByStatus('selesai')">
+        <span class="nav-icon">✅</span> Selesai
+      </button>
+    </nav>
+    <div class="sidebar-section-label">Pelanggan</div>
+    <nav class="sidebar-nav">
+      <a class="nav-btn" href="order.html" target="_blank" style="background:rgba(16,185,129,.15);color:#34d399;border-left:3px solid #10b981">
+        <span class="nav-icon">🛒</span> Form Order Pelanggan
+      </a>
+    </nav>
+
+    <div class="sidebar-section-label">Data</div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn" onclick="exportData()">
+        <span class="nav-icon">💾</span> Export Backup
+      </button>
+      <button class="nav-btn" onclick="document.getElementById('import-input').click()">
+        <span class="nav-icon">📂</span> Import Backup
+      </button>
+    </nav>
+    <input type="file" id="import-input" accept=".json" style="display:none" />
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user-card">
+        <div class="user-avatar">W</div>
+        <div>
+          <div class="user-name">WYSPORT</div>
+          <div class="user-role">by Kakami</div>
         </div>
-        <button class="btn btn-primary btn-full" id="btnSetPeriod" onclick="App.setPeriod()">
-          ✅ Terapkan Periode
-        </button>
       </div>
     </div>
-  </div>
+  </aside>
 
-  <!-- ======== FORM MODAL (Generic) ======== -->
-  <div class="modal" id="formModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="formModalTitle">Form</h3>
-        <button class="modal-close" id="closeFormModal" onclick="App.closeFormModal()">✕</button>
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Dashboard Order</h1>
+        <div class="page-subtitle" id="page-subtitle">Semua Production Work Order</div>
       </div>
-      <div class="modal-body" id="formModalBody">
-        <!-- Dynamic form content rendered here -->
+      <div class="page-actions">
+        <button class="btn btn-ghost btn-sm" onclick="renderDashboard()">🔄 Refresh</button>
+        <a class="btn btn-ghost btn-sm" href="order.html" target="_blank" style="background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.3)">
+          🛒 Form Pelanggan
+        </a>
+        <a class="btn btn-primary" href="form.html">
+          <span>＋</span> Buat PWO Baru
+        </a>
       </div>
     </div>
-  </div>
 
-  <!-- ======== TOAST NOTIFICATIONS ======== -->
-  <div class="toast-container" id="toastContainer"></div>
+    <!-- Deadline Alerts -->
+    <div id="deadline-alerts"></div>
 
-  <!-- ======== INSTALL BANNER (PWA) ======== -->
-  <div class="install-banner" id="installBanner" style="display:none">
-    <div class="install-banner-icon">📱</div>
-    <div class="install-banner-text">
-      <div class="install-banner-title">Install SablonKas</div>
-      <div class="install-banner-sub">Tambahkan ke layar utama Android</div>
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card sc-blue">
+        <div class="sc-icon">📋</div>
+        <div class="sc-value" id="stat-total">0</div>
+        <div class="sc-label">Total PWO</div>
+        <div class="sc-change up">↑ <span id="stat-month">0 order</span> bulan ini</div>
+      </div>
+      <div class="summary-card sc-amber">
+        <div class="sc-icon">⚙️</div>
+        <div class="sc-value" id="stat-proses">0</div>
+        <div class="sc-label">Sedang Proses / QC</div>
+        <div class="sc-change" style="color:#f59e0b">⏳ Perlu perhatian</div>
+      </div>
+      <div class="summary-card sc-green">
+        <div class="sc-icon">✅</div>
+        <div class="sc-value" id="stat-selesai">0</div>
+        <div class="sc-label">Selesai / Terkirim</div>
+        <div class="sc-change up">🎉 <span id="stat-pcs">0 pcs</span> total</div>
+      </div>
+      <div class="summary-card sc-purple">
+        <div class="sc-icon">💰</div>
+        <div class="sc-value" style="font-size:18px" id="stat-revenue">Rp 0</div>
+        <div class="sc-label">Total Revenue</div>
+        <div class="sc-change up">📈 Akumulasi semua order</div>
+      </div>
     </div>
-    <button class="install-banner-btn" onclick="installPWA()">Install</button>
-    <button class="install-banner-close" onclick="dismissInstall()">✕</button>
-  </div>
 
-  <!-- ======== SCRIPTS ======== -->
-  <script src="js/supabase-config.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/modules/dashboard.js"></script>
-  <script src="js/modules/penjualan.js"></script>
-  <script src="js/modules/kas.js"></script>
-  <script src="js/modules/pembelian.js"></script>
-  <script src="js/modules/produksi.js"></script>
-  <script src="js/modules/piutang.js"></script>
-  <script src="js/modules/hutang.js"></script>
-  <script src="js/modules/beban.js"></script>
-  <script src="js/modules/laporan.js"></script>
-  <script src="js/app.js"></script>
+    <!-- Charts Row -->
+    <div class="chart-row">
+      <!-- Trend Chart -->
+      <div class="chart-card">
+        <div class="chart-title">📈 Trend Order (6 Bulan Terakhir)</div>
+        <div class="chart-sub">Jumlah PWO dibuat per bulan</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-trend" height="90"></canvas>
+        </div>
+      </div>
 
-  <!-- ======== Service Worker Registration ======== -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => {
-            console.log('[SablonKas] Service Worker registered:', reg.scope);
+      <!-- Size Distribution -->
+      <div class="chart-card">
+        <div class="chart-title">👕 Distribusi Ukuran</div>
+        <div class="chart-sub">Ukuran paling banyak dipesan</div>
+        <div style="display:flex; gap:16px; align-items:center; margin-top:8px;">
+          <div style="width:130px; flex-shrink:0;">
+            <canvas id="chart-size" width="130" height="130"></canvas>
+          </div>
+          <ul class="legend-list" id="size-legend"></ul>
+        </div>
+      </div>
+    </div>
 
-            // Check for updates
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Show update notification
-                  if (window.Utils) {
-                    Utils.toast('Update tersedia! Refresh untuk memperbarui.', 'info');
-                  }
-                }
-              });
-            });
-          })
-          .catch(err => console.warn('[SablonKas] SW registration failed:', err));
-      });
-    }
+    <!-- PWO List -->
+    <div class="pwo-list-card">
+      <div class="pwo-list-header">
+        <div class="pwo-list-title">📋 Daftar Production Work Order</div>
+        <div style="font-size:12px; color:var(--text-secondary)">
+          <span id="pwo-count">0</span> order ditemukan
+        </div>
+      </div>
 
-    // Handle PWA install prompt (Add to Home Screen)
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
+      <!-- Filter Bar -->
+      <div style="padding:14px 20px; border-bottom:1px solid var(--border);">
+        <div class="filter-bar" style="margin-bottom:0">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" id="search-input" type="text" placeholder="Cari klien, proyek, atau no. PWO..." />
+          </div>
+          <select class="filter-select" id="filter-status">
+            <option value="all">Semua Status</option>
+            <option value="draft">Draft</option>
+            <option value="proses">Proses</option>
+            <option value="qc">QC</option>
+            <option value="selesai">Selesai</option>
+            <option value="terkirim">Terkirim</option>
+          </select>
+        </div>
+      </div>
 
-      // Show install button after 3 seconds if not installed
-      setTimeout(() => {
-        const installBanner = document.getElementById('installBanner');
-        if (installBanner) installBanner.style.display = 'flex';
-      }, 3000);
-    });
+      <div style="overflow-x:auto;">
+        <table class="pwo-table">
+          <thead>
+            <tr>
+              <th>No. PWO</th>
+              <th>Klien / Proyek</th>
+              <th>Deadline</th>
+              <th>Qty</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Dibuat</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="pwo-tbody">
+            <tr><td colspan="8">
+              <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">Belum ada PWO</div>
+                <div class="empty-sub">Klik "+ Buat PWO Baru" untuk membuat Production Work Order pertama Anda.</div>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-    window.installPWA = function() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((result) => {
-          if (result.outcome === 'accepted') {
-            if (window.Utils) Utils.toast('Aplikasi berhasil diinstall! 🎉', 'success');
-            document.getElementById('installBanner').style.display = 'none';
-          }
-          deferredPrompt = null;
-        });
-      }
-    };
+  </main>
+</div>
 
-    window.dismissInstall = function() {
-      document.getElementById('installBanner').style.display = 'none';
-      deferredPrompt = null;
-    };
-  </script>
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/db.js"></script>
+<script src="js/dashboard.js"></script>
+<script>
+  // Register Service Worker (PWA)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+</script>
+<script>
+  // Update count after render
+  const origRenderPWOList = renderPWOList;
+  renderPWOList = function(filter) {
+    origRenderPWOList(filter);
+    const rows = document.querySelectorAll('#pwo-tbody tr:not(:has(.empty-state))');
+    const countEl = document.getElementById('pwo-count');
+    if (countEl) countEl.textContent = document.querySelectorAll('#pwo-tbody tr td:first-child .pwo-no').length;
+  };
+
+  function filterByStatus(status) {
+    const sel = document.getElementById('filter-status');
+    if (sel) { sel.value = status; sel.dispatchEvent(new Event('change')); }
+  }
+</script>
 
 </body>
 </html>

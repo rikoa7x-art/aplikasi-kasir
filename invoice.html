@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice — PWO WYSPORT by Kakami</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <style>
+    #invoice-doc {
+      background: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+    }
+    .inv-header {
+      background: linear-gradient(135deg, #0f3460 0%, #1a56db 60%, #2563eb 100%);
+      padding: 28px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 3px solid #f59e0b;
+    }
+    .inv-company-name { font-size: 22px; font-weight: 900; color: #fff; letter-spacing: .04em; }
+    .inv-company-sub  { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 3px; }
+    .inv-title { font-size: 28px; font-weight: 900; color: #fff; opacity: .9; }
+    .inv-number { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 4px; font-family: monospace; }
+
+    .inv-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      padding: 22px 36px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .inv-meta-left { padding-right: 20px; border-right: 1px solid #e2e8f0; }
+    .inv-meta-right { padding-left: 20px; }
+    .inv-meta-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+    .inv-meta-value { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .inv-meta-sub   { font-size: 12px; color: #475569; margin-top: 2px; }
+    .inv-meta-group { margin-bottom: 16px; }
+
+    .inv-body { padding: 24px 36px; }
+    .inv-table-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748b; margin-bottom: 12px; }
+    .inv-items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .inv-items-table th {
+      background: #1e3a5f; color: #fff;
+      padding: 10px 12px; font-size: 11px; font-weight: 700;
+      text-align: left; letter-spacing: .04em;
+    }
+    .inv-items-table th:last-child, .inv-items-table td:last-child { text-align: right; }
+    .inv-items-table td {
+      padding: 9px 12px; border-bottom: 1px solid #f1f5f9;
+      font-size: 13px; color: #1e293b;
+    }
+    .inv-items-table tbody tr:nth-child(even) td { background: #f8fafc; }
+    .inv-items-table .item-name { font-weight: 600; }
+    .inv-items-table .item-num  { color: #64748b; font-size: 11px; font-weight: 600; }
+
+    .inv-totals { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .inv-totals-box { width: 320px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    .inv-total-row { display: flex; justify-content: space-between; padding: 9px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .inv-total-row:last-child { border-bottom: none; }
+    .inv-total-row.grand { background: #1e3a5f; }
+    .inv-total-row.grand .tl { color: rgba(255,255,255,.8); font-size: 12px; font-weight: 700; }
+    .inv-total-row.grand .tv { color: #fff; font-size: 18px; font-weight: 900; }
+    .tl { color: #475569; font-weight: 500; }
+    .tv { font-weight: 700; color: #1e293b; }
+
+    .inv-footer {
+      padding: 20px 36px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .inv-sign-area { text-align: center; }
+    .inv-sign-name { font-size: 12px; font-weight: 700; color: #475569; margin-top: 6px; border-top: 1px solid #94a3b8; padding-top: 6px; min-width: 160px; }
+    .inv-sign-label { font-size: 10px; color: #94a3b8; }
+    .inv-notes-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 14px; font-size: 12px; color: #92400e; max-width: 320px; }
+
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(15,23,42,.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid #334155;
+      padding: 12px 28px;
+      display: flex; gap: 10px; align-items: center;
+      z-index: 50;
+    }
+
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      body { background: #fff !important; }
+      .action-bar { display: none !important; }
+      #invoice-doc { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+      .main-content { margin: 0 !important; padding: 0 !important; }
+      .sidebar { display: none !important; }
+      .app-shell { display: block !important; }
+      .inv-header, .inv-items-table th, .inv-total-row.grand, .inv-meta { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="index.html">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">PWO App</div>
+        <div class="brand-sub">WYSPORT by Kakami</div>
+      </div>
+    </a>
+  </aside>
+
+  <main class="main-content" style="padding-bottom:70px">
+    <div id="invoice-doc">
+      <div class="inv-header">
+        <div>
+          <div class="inv-company-name">WYSPORT</div>
+          <div class="inv-company-sub">by Kakami — Konveksi Pakaian Olahraga</div>
+        </div>
+        <div style="text-align:right">
+          <div class="inv-title">INVOICE</div>
+          <div class="inv-number" id="inv-pwo-num">–</div>
+        </div>
+      </div>
+
+      <div class="inv-meta">
+        <div class="inv-meta-left">
+          <div class="inv-meta-group">
+            <div class="inv-meta-label">Ditagihkan kepada</div>
+            <div class="inv-meta-value" id="inv-client">–</div>
+            <div class="inv-meta-sub" id="inv-project">–</div>
+          </div>
+          <div class="inv-meta-group">
+            <div class="inv-meta-label">Tanggal Invoice</div>
+            <div class="inv-meta-value" id="inv-date">–</div>
+          </div>
+        </div>
+        <div class="inv-meta-right">
+          <div class="inv-meta-group">
+            <div class="inv-meta-label">Status</div>
+            <div class="inv-meta-value" id="inv-status">–</div>
+          </div>
+          <div class="inv-meta-group">
+            <div class="inv-meta-label">Deadline</div>
+            <div class="inv-meta-value" id="inv-deadline">–</div>
+          </div>
+          <div class="inv-meta-group">
+            <div class="inv-meta-label">Total Item</div>
+            <div class="inv-meta-value" id="inv-qty">–</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inv-body">
+        <div class="inv-table-title">Rincian Item</div>
+        <table class="inv-items-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Ukuran</th><th>Jenis Lengan</th>
+              <th>Qty</th><th>Harga/pcs</th><th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="inv-items-body"></tbody>
+        </table>
+
+        <div class="inv-totals">
+          <div class="inv-totals-box">
+            <div class="inv-total-row"><span class="tl">Subtotal</span><span class="tv" id="inv-t-sub">–</span></div>
+            <div class="inv-total-row" id="inv-disc-row" style="display:none"><span class="tl" id="inv-disc-label">Diskon</span><span class="tv" id="inv-t-disc">–</span></div>
+            <div class="inv-total-row" id="inv-tax-row" style="display:none"><span class="tl">PPN 11%</span><span class="tv" id="inv-t-tax">–</span></div>
+            <div class="inv-total-row grand"><span class="tl">GRAND TOTAL</span><span class="tv" id="inv-t-total">–</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inv-footer">
+        <div class="inv-notes-box" id="inv-notes-box" style="display:none">
+          <strong>Catatan:</strong><br/>
+          <span id="inv-notes-text"></span>
+        </div>
+        <div style="flex:1"></div>
+        <div class="inv-sign-area">
+          <div style="height:60px"></div>
+          <div class="inv-sign-name" id="inv-maker-name">–</div>
+          <div class="inv-sign-label">Dibuat Oleh</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="action-bar">
+  <button class="btn btn-ghost" onclick="history.back()">⬅ Kembali</button>
+  <div style="flex:1"></div>
+  <button class="btn btn-ghost" onclick="window.print()">🖨 Cetak Invoice</button>
+</div>
+
+<script src="js/db.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const id  = new URLSearchParams(window.location.search).get('id');
+  const pwo = id ? db.get(id) : null;
+  if (!pwo) { document.body.innerHTML = '<div style="padding:40px;color:#fff;text-align:center">PWO tidak ditemukan.<br><a href="index.html" style="color:#60a5fa">← Kembali</a></div>'; return; }
+
+  document.title = `Invoice ${pwo.pwoNumber || ''} – WYSPORT`;
+
+  const fmt = n => n ? 'Rp ' + Number(n).toLocaleString('id-ID') : '–';
+  const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'}) : '–';
+
+  document.getElementById('inv-pwo-num').textContent = pwo.pwoNumber || '–';
+  document.getElementById('inv-client').textContent  = pwo.client || '–';
+  document.getElementById('inv-project').textContent = pwo.project || '–';
+  document.getElementById('inv-date').textContent    = fmtDate(new Date().toISOString());
+  document.getElementById('inv-deadline').textContent= pwo.deadline ? fmtDate(pwo.deadline) : '–';
+  document.getElementById('inv-qty').textContent     = (pwo.totalOrder || 0) + ' pcs';
+  document.getElementById('inv-maker-name').textContent = pwo.makerName || '–';
+  document.getElementById('inv-status').textContent  = pwo.status ? pwo.status.toUpperCase() : '–';
+
+  // Build items per size
+  const pd = pwo.priceData || {};
+  const SIZES = ['XS','S','M','L','XL','XXL','3XL','4XL','5XL','CUSTOM'];
+  const counts = {};
+  SIZES.forEach(s => { counts[s] = 0; });
+  (pwo.rows || []).forEach(r => { if (r.size && counts[r.size] !== undefined) counts[r.size]++; });
+
+  const tbody = document.getElementById('inv-items-body');
+  let subtotal = 0;
+  let rowIdx = 1;
+  SIZES.forEach(size => {
+    const qty   = counts[size];
+    const price = parseFloat(pd[size] || 0);
+    if (qty === 0 && price === 0) return;
+    const sub = qty * price;
+    subtotal += sub;
+    tbody.innerHTML += `
+      <tr>
+        <td class="item-num">${rowIdx++}</td>
+        <td class="item-name">${size}</td>
+        <td style="color:#64748b;font-size:12px">Jersey + Produksi</td>
+        <td style="text-align:center;font-weight:700">${qty}</td>
+        <td style="text-align:right">${price > 0 ? fmt(price) : '–'}</td>
+        <td style="text-align:right;font-weight:700;color:#1e40af">${sub > 0 ? fmt(sub) : '–'}</td>
+      </tr>
+    `;
+  });
+  if (!tbody.innerHTML) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Belum ada data harga. Set harga di form PWO terlebih dahulu.</td></tr>';
+  }
+
+  document.getElementById('inv-t-sub').textContent = fmt(subtotal);
+  // Grand total from saved data
+  if (pwo.grandTotal && pwo.grandTotal > 0) {
+    document.getElementById('inv-t-total').textContent = fmt(pwo.grandTotal);
+    if (pwo.grandTotal !== subtotal) {
+      const disc = subtotal - pwo.grandTotal;
+      // show tax/disc rows based on difference
+    }
+  } else {
+    document.getElementById('inv-t-total').textContent = fmt(subtotal);
+  }
+
+  if (pwo.notes) {
+    document.getElementById('inv-notes-box').style.display = 'block';
+    document.getElementById('inv-notes-text').textContent = pwo.notes;
+  }
+});
+</script>
+</body>
+</html>

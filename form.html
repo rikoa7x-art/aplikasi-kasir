@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Form PWO — WYSPORT by Kakami</title>
+  <meta name="description" content="Form Production Work Order WYSPORT by Kakami. Input data pemain, ukuran, desain, dan kalkulasi harga otomatis." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a56db" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/form.css" />
+  <!-- SheetJS for Excel import -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <a class="sidebar-brand" href="index.html">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">PWO App</div>
+        <div class="brand-sub">WYSPORT by Kakami</div>
+      </div>
+    </a>
+
+    <div class="sidebar-section-label">Navigasi Form</div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" onclick="scrollToSection('sec-header')">
+        <span class="nav-icon">📋</span> Info Order
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-design')">
+        <span class="nav-icon">🎨</span> Desain Produk
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-recap')">
+        <span class="nav-icon">📐</span> Rekapitulasi
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-table')">
+        <span class="nav-icon">📋</span> Daftar Item
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-price')">
+        <span class="nav-icon">💰</span> Harga & Invoice
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-notes')">
+        <span class="nav-icon">📝</span> Catatan
+      </button>
+      <button class="nav-btn" onclick="scrollToSection('sec-sign')">
+        <span class="nav-icon">✍️</span> Tanda Tangan
+      </button>
+    </nav>
+
+    <div class="sidebar-section-label">Aksi</div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn" onclick="addRow()">
+        <span class="nav-icon">➕</span> Tambah Item
+      </button>
+      <button class="nav-btn" onclick="document.getElementById('import-excel').click()">
+        <span class="nav-icon">📥</span> Import Excel
+      </button>
+      <button class="nav-btn" onclick="sendWA()">
+        <span class="nav-icon">💬</span> Kirim WA
+      </button>
+      <button class="nav-btn" onclick="window.print()">
+        <span class="nav-icon">🖨</span> Cetak / PDF
+      </button>
+      <button class="nav-btn" onclick="goBack()">
+        <span class="nav-icon">⬅️</span> Kembali
+      </button>
+    </nav>
+    <input type="file" id="import-excel" accept=".xlsx,.xls,.csv" style="display:none" onchange="importFromFile(event)" />
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user-card">
+        <div class="user-avatar">W</div>
+        <div>
+          <div class="user-name">WYSPORT</div>
+          <div class="user-role">by Kakami</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content" style="padding-bottom:80px">
+
+    <div id="pwo-document">
+
+      <!-- ====== HEADER ====== -->
+      <section id="sec-header">
+        <div class="doc-title-row">
+          <div>
+            <h1 class="doc-main-title">PRODUCTION WORK ORDER</h1>
+            <div class="doc-sub-title">PWO WYSPORT By Kakami</div>
+            <div class="doc-status-row">
+              <div class="pwo-num-tag" id="pwo-number-display">No. PWO</div>
+              <div class="status-select-wrap">
+                <select class="status-select" id="field-status">
+                  <option value="draft">📝 Draft</option>
+                  <option value="proses">⚙️ Proses</option>
+                  <option value="qc">🔍 QC</option>
+                  <option value="selesai">✅ Selesai</option>
+                  <option value="terkirim">📦 Terkirim</option>
+                </select>
+                <span class="status-caret">▾</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="logo-placeholder" id="logo-drop"
+              onclick="document.getElementById('logo-input').click()"
+              title="Klik untuk upload logo">
+              <span class="logo-text">LOGO</span>
+              <span class="logo-hint">klik upload</span>
+            </div>
+            <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(event)" />
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-left">
+            <div class="info-row">
+              <label class="info-label">Konsumen / Client</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-client" type="text" placeholder="Nama klien..." />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Nama Projek</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-project" type="text" placeholder="Nama proyek..." />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Tgl Order / Deadline</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-date" type="text" placeholder="dd/mm/yyyy – dd/mm/yyyy" />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Deadline (picker)</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-deadline" type="date" />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Bahan Utama</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-material" type="text" placeholder="Dry Fit, Polyester..." />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Bahan Lainnya</label>
+              <div class="info-sep">:</div>
+              <input class="info-input" id="field-other-material" type="text" placeholder="Spandex, Cotton..." />
+            </div>
+            <div class="info-row">
+              <label class="info-label">Jenis Orderan</label>
+              <div class="info-sep">:</div>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="order-type" value="Full Order" checked /> Full Order</label>
+                <label class="radio-label"><input type="radio" name="order-type" value="Partial" /> Partial</label>
+                <label class="radio-label"><input type="radio" name="order-type" value="Custom" /> Custom</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-right">
+            <div class="order-summary-box">
+              <div class="osb-title">JUMLAH ORDER PER UKURAN</div>
+              <div class="osb-table">
+                <div class="osb-row header-row">
+                  <div class="osb-cell label-cell">UKURAN</div>
+                  <div class="osb-cell">XS</div><div class="osb-cell">S</div>
+                  <div class="osb-cell">M</div><div class="osb-cell">L</div>
+                  <div class="osb-cell">XL</div><div class="osb-cell">CUSTOM</div>
+                </div>
+                <div class="osb-row">
+                  <div class="osb-cell label-cell">JML</div>
+                  <div class="osb-cell count" id="hdr-xs">0</div>
+                  <div class="osb-cell count" id="hdr-s">0</div>
+                  <div class="osb-cell count" id="hdr-m">0</div>
+                  <div class="osb-cell count" id="hdr-l">0</div>
+                  <div class="osb-cell count" id="hdr-xl">0</div>
+                  <div class="osb-cell count" id="hdr-custom">0</div>
+                </div>
+                <div class="osb-row header-row mt4">
+                  <div class="osb-cell label-cell">UKURAN</div>
+                  <div class="osb-cell">XXL</div><div class="osb-cell">3XL</div>
+                  <div class="osb-cell">4XL</div><div class="osb-cell">5XL</div>
+                  <div class="osb-cell">PANJANG</div><div class="osb-cell">PENDEK</div>
+                </div>
+                <div class="osb-row">
+                  <div class="osb-cell label-cell">JML</div>
+                  <div class="osb-cell count" id="hdr-xxl">0</div>
+                  <div class="osb-cell count" id="hdr-3xl">0</div>
+                  <div class="osb-cell count" id="hdr-4xl">0</div>
+                  <div class="osb-cell count" id="hdr-5xl">0</div>
+                  <div class="osb-cell count" id="hdr-panjang">0</div>
+                  <div class="osb-cell count" id="hdr-pendek">0</div>
+                </div>
+              </div>
+              <div class="total-order-row">
+                <span class="total-label">TOTAL ORDER</span>
+                <span class="total-value" id="hdr-total">0</span>
+                <span class="total-unit">pcs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== DESAIN PRODUK ====== -->
+      <section id="sec-design" class="doc-section">
+        <div class="section-title-bar">🎨 DESAIN PRODUK</div>
+        <div class="design-area" id="design-drop-zone"
+          onclick="document.getElementById('design-input').click()"
+          ondragover="event.preventDefault(); this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleDesignDrop(event)">
+          <img id="design-preview" src="" alt="" style="display:none" />
+          <div class="design-placeholder" id="design-placeholder">
+            <div class="design-icon">🖼️</div>
+            <div class="design-hint-title">[ Insert Gambar Desain ]</div>
+            <div class="design-hint-sub">Klik atau drag & drop gambar desain di sini</div>
+            <div class="design-hint-formats">PNG, JPG, WEBP, SVG</div>
+          </div>
+        </div>
+        <input type="file" id="design-input" accept="image/*" style="display:none" onchange="handleDesignUpload(event)" />
+        <div class="design-controls" id="design-controls" style="display:none">
+          <button class="ctrl-btn" onclick="document.getElementById('design-input').click()">🔄 Ganti Gambar</button>
+          <button class="ctrl-btn danger" onclick="clearDesign()">🗑 Hapus Gambar</button>
+        </div>
+      </section>
+
+      <!-- ====== REKAPITULASI ====== -->
+      <section id="sec-recap" class="doc-section">
+        <div class="section-title-bar">📐 REKAPITULASI UKURAN <span class="auto-badge">terisi otomatis</span></div>
+        <div class="recap-wrapper">
+          <table class="recap-table">
+            <thead>
+              <tr>
+                <th>SIZE</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th>
+                <th>XXL</th><th>3XL</th><th>4XL</th><th>5XL</th><th>CUSTOM</th>
+                <th class="total-col">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="size-label-cell">JML</td>
+                <td class="count-cell" id="rc-xs">0</td>
+                <td class="count-cell" id="rc-s">0</td>
+                <td class="count-cell" id="rc-m">0</td>
+                <td class="count-cell" id="rc-l">0</td>
+                <td class="count-cell" id="rc-xl">0</td>
+                <td class="count-cell" id="rc-xxl">0</td>
+                <td class="count-cell" id="rc-3xl">0</td>
+                <td class="count-cell" id="rc-4xl">0</td>
+                <td class="count-cell" id="rc-5xl">0</td>
+                <td class="count-cell" id="rc-custom">0</td>
+                <td class="count-cell total-col" id="rc-total">0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ====== DAFTAR ITEM PRODUKSI ====== -->
+      <section id="sec-table" class="doc-section">
+        <div class="section-title-bar">📋 DAFTAR ITEM PRODUKSI</div>
+        <div class="table-wrapper">
+          <table id="prod-table" class="prod-table">
+            <thead>
+              <tr class="thead-top">
+                <th rowspan="2" class="col-no">NO</th>
+                <th rowspan="2" class="col-nama">NAMA</th>
+                <th rowspan="2" class="col-noplayer">NO PLAYER</th>
+                <th rowspan="2" class="col-size">SIZE</th>
+                <th rowspan="2" class="col-tangan">TGN PENDEK/<br/>PANJANG</th>
+                <th rowspan="2" class="col-posisi">POSISI /<br/>KET.</th>
+                <th colspan="2" class="col-group">ATASAN</th>
+                <th colspan="2" class="col-group">BAWAHAN</th>
+                <th colspan="2" class="col-group">LENGAN</th>
+                <th rowspan="2" class="col-cek">CEK<br/>✓</th>
+              </tr>
+              <tr class="thead-sub">
+                <th class="col-sub">DPN</th><th class="col-sub">BLK</th>
+                <th class="col-sub">KANAN</th><th class="col-sub">KIRI</th>
+                <th class="col-sub">KANAN</th><th class="col-sub">KIRI</th>
+              </tr>
+            </thead>
+            <tbody id="prod-tbody"></tbody>
+          </table>
+        </div>
+        <div class="table-actions">
+          <button class="tbl-btn add" onclick="addRow()">＋ Tambah Baris</button>
+          <button class="tbl-btn add-five" onclick="addRows(5)">＋＋ Tambah 5 Baris</button>
+          <button class="tbl-btn import" onclick="document.getElementById('import-excel').click()">
+            📥 Import Excel/CSV
+          </button>
+        </div>
+      </section>
+
+      <!-- ====== HARGA & INVOICE ====== -->
+      <section id="sec-price" class="doc-section">
+        <div class="section-title-bar">💰 HARGA & KALKULASI INVOICE <span class="auto-badge">terisi otomatis</span></div>
+        <div class="price-grid">
+          <!-- Harga per ukuran -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Harga per Ukuran</div>
+            <div class="price-size-table">
+              <table class="price-table">
+                <thead>
+                  <tr>
+                    <th>Ukuran</th>
+                    <th>Qty (otomatis)</th>
+                    <th>Harga / pcs (Rp)</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody id="price-tbody">
+                  <!-- Generated by JS -->
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top:12px;">
+              <div class="info-row" style="margin-bottom:8px">
+                <label class="info-label" style="font-size:12px">Ongkos Sablon / pcs</label>
+                <div class="info-sep">:</div>
+                <div class="price-input-cell">
+                  <span class="currency-prefix">Rp</span>
+                  <input class="price-inp" id="sablon-cost" type="number" placeholder="0" min="0" style="width:120px"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoice Summary -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Ringkasan Invoice</div>
+            <div class="invoice-summary">
+              <div class="inv-row">
+                <span class="inv-label">Subtotal</span>
+                <span class="inv-value" id="inv-subtotal">Rp 0</span>
+              </div>
+              <div class="inv-row">
+                <span class="inv-label">
+                  <label class="discount-check">
+                    <input type="checkbox" id="discount-chk" onchange="recalcAll()" />
+                    Diskon
+                    <input class="small-inp" id="discount-val" type="number" placeholder="0" min="0" max="100" value="0" onchange="recalcAll()" style="width:55px" />
+                    %
+                  </label>
+                </span>
+                <span class="inv-value" id="inv-discount">–</span>
+              </div>
+              <div class="inv-row">
+                <span class="inv-label">
+                  <label class="discount-check">
+                    <input type="checkbox" id="tax-chk" onchange="recalcAll()" />
+                    PPN 11%
+                  </label>
+                </span>
+                <span class="inv-value" id="inv-tax">–</span>
+              </div>
+              <div class="inv-row total">
+                <span class="inv-label">GRAND TOTAL</span>
+                <span class="inv-value" id="inv-total">Rp 0</span>
+              </div>
+            </div>
+            <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+              <button class="btn btn-success" onclick="savePWO()" style="width:100%; justify-content:center;">
+                💾 Simpan PWO
+              </button>
+              <button class="btn btn-info" onclick="openInvoicePage()" style="width:100%; justify-content:center;">
+                🧾 Generate Invoice
+              </button>
+              <button class="wa-btn" onclick="sendWA()" style="width:100%; justify-content:center;">
+                💬 Kirim via WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== CATATAN PRODUKSI ====== -->
+      <section id="sec-notes" class="doc-section">
+        <div class="section-title-bar">📝 CATATAN PRODUKSI</div>
+        <textarea id="notes-area" class="notes-textarea"
+          placeholder="Tulis catatan produksi...&#10;Contoh:&#10;- Warna dasar hijau tosca&#10;- Nomor punggung font Arial Bold&#10;- Deadline sablon 3 hari sebelum serah terima"></textarea>
+      </section>
+
+      <!-- ====== TANDA TANGAN ====== -->
+      <section id="sec-sign" class="doc-section">
+        <div class="section-title-bar">✍️ TANDA TANGAN & PENANGGUNG JAWAB</div>
+        <div class="sign-grid">
+          <div class="sign-card">
+            <div class="sign-card-title">Operator / Pelaksana</div>
+            <div class="sign-box">
+              <canvas class="sig-canvas" id="sig-operator" width="240" height="100"></canvas>
+              <button class="sig-clear" onclick="clearSig('sig-operator')">✕</button>
+            </div>
+            <input class="sign-name-input" id="sign-operator-name" type="text" placeholder="Nama Operator..." />
+          </div>
+          <div class="sign-card">
+            <div class="sign-card-title">QC / Pemeriksa</div>
+            <div class="sign-box">
+              <canvas class="sig-canvas" id="sig-qc" width="240" height="100"></canvas>
+              <button class="sig-clear" onclick="clearSig('sig-qc')">✕</button>
+            </div>
+            <input class="sign-name-input" id="sign-qc-name" type="text" placeholder="Nama QC..." />
+          </div>
+          <div class="sign-card">
+            <div class="sign-card-title">Dibuat Oleh</div>
+            <div class="sign-box">
+              <canvas class="sig-canvas" id="sig-maker" width="240" height="100"></canvas>
+              <button class="sig-clear" onclick="clearSig('sig-maker')">✕</button>
+            </div>
+            <input class="sign-name-input" id="sign-maker-name" type="text" placeholder="Nama Pembuat..." />
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== FOOTER ====== -->
+      <footer class="doc-footer">
+        <div class="footer-brand">PWO WYSPORT By Kakami</div>
+        <div class="footer-pwo-no">No. PWO: <span id="pwo-footer-num">–</span></div>
+        <div class="footer-date">Dicetak: <span id="print-date"></span></div>
+      </footer>
+
+    </div><!-- end #pwo-document -->
+
+    <!-- Floating Action Bar -->
+    <div class="form-action-bar">
+      <button class="btn btn-ghost" onclick="goBack()">⬅ Kembali</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="window.print()">🖨 Cetak</button>
+      <button class="btn btn-info" onclick="openInvoicePage()">🧾 Invoice</button>
+      <button class="btn btn-primary" onclick="savePWO()">💾 Simpan PWO</button>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/db.js"></script>
+<script src="js/form.js"></script>
+<script>
+// Build price table rows
+document.addEventListener('DOMContentLoaded', () => {
+  const SIZES = ['XS','S','M','L','XL','XXL','3XL','4XL','5XL','CUSTOM'];
+  const tbody = document.getElementById('price-tbody');
+  if (tbody) {
+    tbody.innerHTML = SIZES.map(s => `
+      <tr>
+        <td style="font-weight:700;color:#1e293b">${s}</td>
+        <td class="price-qty" id="qty-${s.toLowerCase()}">0</td>
+        <td>
+          <div class="price-input-cell">
+            <span class="currency-prefix">Rp</span>
+            <input class="price-inp" id="price-${s.toLowerCase()}" type="number"
+              placeholder="0" min="0" oninput="recalcAll()" />
+          </div>
+        </td>
+        <td style="font-weight:700;color:#1e40af;font-size:12px" id="sub-${s.toLowerCase()}">–</td>
+      </tr>
+    `).join('');
+  }
+
+  // Sync footer PWO number
+  const syncNum = () => {
+    const n = document.getElementById('pwo-number-display')?.textContent;
+    const f = document.getElementById('pwo-footer-num');
+    if (f && n) f.textContent = n;
+  };
+  setInterval(syncNum, 1000);
+});
+
+// Override recalcAll to also update subtotal cells per size
+const _origRecalc = recalcAll;
+recalcAll = function() {
+  _origRecalc();
+  const SIZES = ['XS','S','M','L','XL','XXL','3XL','4XL','5XL','CUSTOM'];
+  SIZES.forEach(s => {
+    const qtyEl = document.getElementById(`qty-${s.toLowerCase()}`);
+    const subEl = document.getElementById(`sub-${s.toLowerCase()}`);
+    const priceEl = document.getElementById(`price-${s.toLowerCase()}`);
+    if (!qtyEl || !subEl || !priceEl) return;
+    const qty   = parseInt(qtyEl.textContent || 0);
+    const price = parseFloat(priceEl.value || 0);
+    subEl.textContent = qty > 0 && price > 0 ? 'Rp ' + (qty * price).toLocaleString('id-ID') : '–';
+  });
+};
+</script>
+
+</body>
+</html>
